@@ -1,5 +1,5 @@
 @echo off
-title GuMa - Hofbruckl
+title GuMa V11 by HB.
 setlocal
 
 cd /d "%~dp0"
