@@ -97,15 +97,15 @@ STANDARD_ZEITPOSTEN = [
 ]
 
 STANDARD_EINSTELLUNGEN = {
-    "name": "Raphaela Hofbrückl, Dipl.-Psych.",
+    "name": "",
     "iban": "",
-    "bank": "Stadtsparkasse München",
+    "bank": "",
     "kontoinhaberin": "",
     "finanzamt": "",
     "steuernummer": "",
     "ust_idnr": "",
     "steuer_id": "",
-    "telefon": "0821/349 43 73",
+    "telefon": "",
     "absender_adresse": "",
     "dokumente_ordner": "",  # leer = Standardordner neben dem Programm
 }

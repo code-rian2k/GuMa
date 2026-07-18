@@ -91,8 +91,8 @@ def bereinige_docx(quelle: str, ziel: str):
 
     if "docProps/core.xml" in inhalte:
         core = inhalte["docProps/core.xml"].decode("utf-8")
-        core = re.sub(r"<dc:creator>.*?</dc:creator>", "<dc:creator>Hofbrückl</dc:creator>", core)
-        core = re.sub(r"<cp:lastModifiedBy>.*?</cp:lastModifiedBy>", "<cp:lastModifiedBy>Hofbrückl</cp:lastModifiedBy>", core)
+        core = re.sub(r"<dc:creator>.*?</dc:creator>", "<dc:creator>GuMa</dc:creator>", core)
+        core = re.sub(r"<cp:lastModifiedBy>.*?</cp:lastModifiedBy>", "<cp:lastModifiedBy>GuMa</cp:lastModifiedBy>", core)
         core = re.sub(r"<cp:revision>.*?</cp:revision>", "<cp:revision>1</cp:revision>", core)
         inhalte["docProps/core.xml"] = core.encode("utf-8")
 

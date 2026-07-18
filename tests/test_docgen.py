@@ -28,7 +28,7 @@ class TestDokumentErstellung(unittest.TestCase):
             "kinder": "Max und Lisa", "gericht": "Augsburg",
             "abteilung": "Abteilung für Familiensachen", "aktenzeichen": "123 F 456/26",
         }
-        self.einstellungen = {"telefon": "0821/349 43 73", "name": "Raphaela Hofbrückl, Dipl.-Psych."}
+        self.einstellungen = {"telefon": "0821/349 43 73", "name": "Frau Dr. Beispiel, Dipl.-Psych."}
 
         self.anschreiben_vorlage = os.path.join(self.tmp, "anschreiben_vorlage.docx")
         _test_vorlage_bauen(self.anschreiben_vorlage, ANSCHREIBEN_PLATZHALTER)

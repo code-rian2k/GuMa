@@ -1,8 +1,9 @@
 """
-Hauptfenster von GuMa (Gutachten-Manager - Hofbrückl).
+Hauptfenster von GuMa (Gutachten-Manager).
 """
 import os
 import datetime
+import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 
@@ -30,7 +31,7 @@ def heute():
 class Anwendung(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("GuMa - Hofbrückl")
+        self.title(design.PROGRAMMNAME)
         self.geometry("1250x780")
         self.minsize(1000, 620)
         self._maximiert_starten()
@@ -98,6 +99,46 @@ class Anwendung(tk.Tk):
         datei_menu.add_separator()
         datei_menu.add_command(label="Beenden", command=self.destroy)
         menu.add_cascade(label="Datei", menu=datei_menu)
+
+        info_menu = tk.Menu(menu, tearoff=0)
+        info_menu.add_command(label="Über GuMa...", command=self._info_oeffnen)
+        menu.add_cascade(label="Info", menu=info_menu)
+
+    def _info_oeffnen(self):
+        fenster = tk.Toplevel(self)
+        fenster.title("Über GuMa")
+        fenster.geometry("440x300")
+        fenster.resizable(False, False)
+        fenster.configure(bg=design.FARBE_HINTERGRUND)
+        design.icon_setzen(fenster, BASIS_ORDNER)
+
+        inhalt = ttk.Frame(fenster, padding=20)
+        inhalt.pack(fill="both", expand=True)
+
+        ttk.Label(inhalt, text=f"GuMa {design.VERSION}", font=("TkDefaultFont", 16, "bold")).pack(anchor="w")
+        ttk.Label(inhalt, text="Fallverwaltung für psychologische Gutachten", font=("TkDefaultFont", 10)).pack(
+            anchor="w", pady=(0, 15)
+        )
+
+        link = tk.Label(
+            inhalt, text=design.WEBSITE_URL, fg=design.FARBE_PRIMAER, bg=design.FARBE_HINTERGRUND,
+            cursor="hand2", font=("TkDefaultFont", 10, "underline"),
+        )
+        link.pack(anchor="w", pady=(0, 15))
+        link.bind("<Button-1>", lambda _e: webbrowser.open(design.WEBSITE_URL))
+
+        ttk.Separator(inhalt, orient="horizontal").pack(fill="x", pady=(0, 10))
+
+        ttk.Label(
+            inhalt,
+            text=f"© {datetime.date.today().year} {design.AUTOR_KUERZEL}. Alle Rechte vorbehalten.\n"
+                 "Diese Software ist keine Open-Source-Software. Vervielfältigung,\n"
+                 "Veränderung, Weitergabe oder gewerbliche Nutzung sind nur mit\n"
+                 "ausdrücklicher Zustimmung der Urheberin gestattet.",
+            justify="left", font=("TkDefaultFont", 8),
+        ).pack(anchor="w")
+
+        ttk.Button(inhalt, text="Schließen", command=fenster.destroy).pack(anchor="e", pady=(15, 0))
 
     def _backup_erstellen(self):
         ziel = filedialog.askdirectory(
