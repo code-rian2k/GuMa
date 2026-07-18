@@ -7,8 +7,12 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-PROGRAMMNAME = "GuMa"
-UNTERTITEL = "Hofbrückl – Fallverwaltung für psychologische Gutachten"
+VERSION = "V11"
+AUTOR_KUERZEL = "HB"
+WEBSITE_URL = "https://www.hofbrueckl.com"
+
+PROGRAMMNAME = f"GuMa {VERSION} by {AUTOR_KUERZEL}"
+UNTERTITEL = "– Fallverwaltung für psychologische Gutachten"
 
 FARBE_PRIMAER = "#2F5D74"
 FARBE_PRIMAER_DUNKEL = "#234756"

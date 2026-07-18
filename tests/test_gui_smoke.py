@@ -297,6 +297,9 @@ class TestGuiDurchklick(unittest.TestCase):
         repo.einstellung_setzen("iban", "DE12 3456 7890 0000 0000 00")
         self.assertEqual(repo.einstellungen_holen()["iban"], "DE12 3456 7890 0000 0000 00")
 
+    def test_info_dialog_oeffnet_ohne_fehler(self):
+        self.app._info_oeffnen()
+
     def test_suche_filtert_aber_neuer_fall_bleibt_robust(self):
         # Ersten Fall anlegen und eindeutig benennen
         self.app._neuer_fall()

@@ -2,7 +2,7 @@
   <img src="app/assets/logo_icon.png" alt="GuMa Logo" width="120">
 </p>
 
-# GuMa - Hofbrückl
+# GuMa V11 by HB - Fallverwaltung für psychologische Gutachten
 
 Lokale Software zur Verwaltung von Gutachterfällen: Falldaten, Fristen,
 Notizen, Erstellung von Anschreiben/Gutachten aus selbst hinterlegten
@@ -140,6 +140,16 @@ git clone <URL-dieses-Repos>
 ```
 
 Wichtig: In diesem Repo liegen **keine** echten Falldaten (siehe
-`.gitignore` - `data/` und `dokumente/` werden nie versioniert). Die
-mitgelieferte Gutachten-Vorlage enthält ausschließlich Deckblatt, Index und
-Überschriften ohne personenbezogene Inhalte (siehe Hinweis oben).
+`.gitignore` - `data/`, `dokumente/` und `vorlagen/` werden nie
+versioniert).
+
+## Lizenz
+
+GuMa ist freie Software unter der **GNU General Public License v3.0
+(GPLv3)** - siehe [LICENSE](LICENSE) bzw. der vollständige, verbindliche
+Lizenztext unter <https://www.gnu.org/licenses/gpl-3.0.html>. Kurz
+zusammengefasst: Sie dürfen GuMa frei nutzen, verändern und weitergeben,
+auch kommerziell - veränderte Versionen müssen dabei ebenfalls unter der
+GPLv3 mit offenem Quellcode weitergegeben werden.
+
+© 2026 HB ([www.hofbrueckl.com](https://www.hofbrueckl.com))
