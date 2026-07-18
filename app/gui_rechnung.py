@@ -68,7 +68,20 @@ class RechnungFenster(tk.Toplevel):
         def _mausrad(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        canvas.bind_all("<MouseWheel>", _mausrad)
+        # Nur binden, während sich die Maus über diesem Fenster befindet -
+        # sonst bliebe die Bindung nach dem Schließen des Fensters
+        # anwendungsweit aktiv (bind_all) und würde beim nächsten Scrollen
+        # irgendwo in GuMa versuchen, dieses längst geschlossene Fenster zu
+        # scrollen (Fehler, weil das Widget dann nicht mehr existiert).
+        def _mausrad_aktivieren(_event=None):
+            canvas.bind_all("<MouseWheel>", _mausrad)
+
+        def _mausrad_deaktivieren(_event=None):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _mausrad_aktivieren)
+        canvas.bind("<Leave>", _mausrad_deaktivieren)
+        self.bind("<Destroy>", lambda e: _mausrad_deaktivieren() if e.widget is self else None)
 
         kopf = ttk.Frame(inhalt, padding=10)
         kopf.pack(fill="x")
@@ -95,6 +108,7 @@ class RechnungFenster(tk.Toplevel):
         ttk.Label(stundensatz_frame, text="Stundensatz (€):").pack(side="left")
         self.stundensatz_var = tk.StringVar(value="100")
         ttk.Entry(stundensatz_frame, textvariable=self.stundensatz_var, width=10).pack(side="left", padx=5)
+        self.stundensatz_var.trace_add("write", lambda *_: self._neu_berechnen())
 
         # --- Aufwendungen ---
         aufw_rahmen = ttk.LabelFrame(inhalt, text="2. Aufwendungen", padding=10)

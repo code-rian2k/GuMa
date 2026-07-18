@@ -666,7 +666,20 @@ class Anwendung(tk.Tk):
         def _mausrad(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        canvas.bind_all("<MouseWheel>", _mausrad)
+        # Nur binden, während sich die Maus über diesem Fenster befindet -
+        # sonst bliebe die Bindung nach dem Schließen des Fensters
+        # anwendungsweit aktiv (bind_all) und würde beim nächsten Scrollen
+        # irgendwo in GuMa versuchen, dieses längst geschlossene Fenster zu
+        # scrollen (Fehler, weil das Widget dann nicht mehr existiert).
+        def _mausrad_aktivieren(_event=None):
+            canvas.bind_all("<MouseWheel>", _mausrad)
+
+        def _mausrad_deaktivieren(_event=None):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _mausrad_aktivieren)
+        canvas.bind("<Leave>", _mausrad_deaktivieren)
+        fenster.bind("<Destroy>", lambda e: _mausrad_deaktivieren() if e.widget is fenster else None)
 
         # --- Speicherort für Fälle/Dokumente ---
         ordner_rahmen = ttk.LabelFrame(inhalt, text="Speicherort für Fälle und Dokumente", padding=10)

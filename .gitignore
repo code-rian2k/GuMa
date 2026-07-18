@@ -1,0 +1,12 @@
+# Persönliche/sensible Falldaten - dürfen nie versioniert werden
+data/
+dokumente/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Vom Windows-Start-Skript erzeugt / Editor-/OS-Dateien
+*.log
+.DS_Store
