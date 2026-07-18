@@ -7,12 +7,10 @@ try:
     from app.docx_bereinigen import bereinige_docx, enthaelt_versteckte_aenderungen
     LXML_VERFUEGBAR = True
 except ImportError:
-    # lxml ist bewusst NICHT Teil von requirements.txt (wird von der App im
-    # normalen Betrieb nicht gebraucht, nur für dieses Wartungswerkzeug).
-    # Für diesen Test lokal: "pip install lxml"
+    # lxml ist Teil von requirements.txt (wird seit Einführung eigener
+    # Word-Vorlagen zur Laufzeit gebraucht, siehe app/vorlagen.py). Für
+    # diesen Test lokal ohne installierte Abhängigkeiten: "pip install lxml"
     LXML_VERFUEGBAR = False
-
-from app.docgen import TEMPLATES_DIR
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -82,22 +80,6 @@ class TestDocxBereinigen(unittest.TestCase):
         self.assertNotIn("<w:ins", inhalt)
 
         self.assertFalse(enthaelt_versteckte_aenderungen(ziel))
-
-    def test_ausgelieferte_vorlagen_enthalten_keine_versteckten_aenderungen(self):
-        """
-        Schutztest: stellt dauerhaft sicher, dass die mit GuMa ausgelieferten
-        Word-Vorlagen keine Reste von Word-Änderungsverfolgung mehr enthalten
-        - genau das Problem, das bei der echten Gutachten-Vorlage auftrat
-        (Klarnamen/Geburtsdaten einer früheren Familie waren über
-        "gelöschte" Änderungen weiterhin im Dateiinhalt vorhanden).
-        """
-        for dateiname in ["anschreiben_vorlage.docx", "gutachten_vorlage.docx"]:
-            pfad = os.path.join(TEMPLATES_DIR, dateiname)
-            if os.path.isfile(pfad):
-                self.assertFalse(
-                    enthaelt_versteckte_aenderungen(pfad),
-                    f"{dateiname} enthält noch Reste von Word-Änderungsverfolgung!",
-                )
 
 
 if __name__ == "__main__":

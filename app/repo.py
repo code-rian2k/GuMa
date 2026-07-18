@@ -251,3 +251,41 @@ def einstellung_setzen(schluessel: str, wert: str):
             (schluessel, wert),
         )
         conn.commit()
+
+
+# ---------- Vorlagen (Word-Dokumentvorlagen für Anschreiben/Gutachten) ----------
+
+VORLAGEN_TYPEN = ["anschreiben", "gutachten"]
+
+
+def vorlage_anlegen(typ: str, name: str, dateiname: str) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO vorlagen (typ, name, dateiname, erstellt_am) VALUES (?,?,?,?)",
+            (typ, name, dateiname, now_str()),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def vorlagen_liste(typ: str = None):
+    with get_conn() as conn:
+        if typ:
+            rows = conn.execute(
+                "SELECT * FROM vorlagen WHERE typ = ? ORDER BY name ASC", (typ,)
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM vorlagen ORDER BY typ ASC, name ASC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def vorlage_holen(vorlage_id: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM vorlagen WHERE id = ?", (vorlage_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def vorlage_loeschen(vorlage_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM vorlagen WHERE id = ?", (vorlage_id,))
+        conn.commit()
