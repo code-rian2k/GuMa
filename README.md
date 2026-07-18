@@ -5,17 +5,17 @@
 # GuMa - Hofbrückl
 
 Lokale Software zur Verwaltung von Gutachterfällen: Falldaten, Fristen,
-Notizen, Erstellung von Anschreiben/Gutachten aus Word-Vorlagen sowie
-Rechnungserstellung. Alle Daten bleiben ausschließlich auf diesem Rechner
-(SQLite-Datenbank in `data/gutachten_manager.db`) - es gibt keine
-Cloud-Anbindung.
+Notizen, Erstellung von Anschreiben/Gutachten aus selbst hinterlegten
+Word-Vorlagen sowie Rechnungserstellung. Alle Daten bleiben ausschließlich
+auf diesem Rechner (SQLite-Datenbank in `data/gutachten_manager.db`) - es
+gibt keine Cloud-Anbindung.
 
 Gebaut für die Arbeit einer psychologischen Sachverständigen im
 Familienrecht - speziell zugeschnitten auf familienpsychologische
 Gutachten und den Umgang mit personenbezogenen Falldaten.
 
 **Tech-Stack:** Python 3 · Tkinter (GUI) · SQLite (lokale Datenbank) ·
-python-docx (Word-Vorlagen) · openpyxl (Rechnungs-Export)
+python-docx + lxml (Word-Vorlagen) · openpyxl (Rechnungs-Export)
 
 ## Installation (einmalig)
 
@@ -43,7 +43,7 @@ gutachten_manager/
   requirements.txt          benötigte Python-Pakete
   icon.ico                   Programmsymbol
   app/                       Programmcode (u.a. design.py fürs Erscheinungsbild)
-  templates/                 Word-Vorlagen (Anschreiben, Gutachten)
+  vorlagen/                   eigene Word-Vorlagen (wird automatisch angelegt)
   data/                       Datenbank (wird automatisch angelegt)
   dokumente/                  erzeugte Word-/Excel-Dateien, je Fall ein Unterordner
   tests/                       automatisierte Tests
@@ -54,13 +54,25 @@ gutachten_manager/
 - **Fallverwaltung**: Aktenzeichen, Gericht, Parteien, Kinder, Status
 - **Fristen & Termine**: mit Erledigt-Markierung
 - **Notizen**: laufendes Journal je Fall, automatisch mit Zeitstempel
-- **Dokumente**: Anschreiben und Gutachten-Grundgerüst auf Basis der
-  vorhandenen Word-Vorlagen erzeugen (Titelseite/Anschrift wird automatisch
+- **Dokumente**: Anschreiben und Gutachten-Grundgerüst auf Basis selbst
+  hinterlegter Word-Vorlagen erzeugen (Titelseite/Anschrift wird automatisch
   befüllt, der eigentliche Gutachtentext wird wie gewohnt in Word verfasst).
   Die Datei wird ohne Rückfrage direkt im Ordner des jeweiligen Falls
   abgelegt (wie alle anderen Dokumente/Unterlagen) und automatisch in Word
   geöffnet. Bereits vorhandene Dateien werden nie überschrieben - bei
   mehrfachem Erstellen wird automatisch durchnummeriert.
+- **Eigene Vorlagen**: GuMa liefert selbst keine Word-Vorlagen mit - unter
+  Datei-Menü → Einstellungen → "Vorlagen für Anschreiben und Gutachten"
+  können beliebig viele eigene `.docx`-Dateien hinzugefügt werden, je Typ
+  wird beim Erstellen eines Dokuments per Dropdown ausgewählt, welche Vorlage
+  verwendet wird. Damit GuMa Namen, Datum usw. automatisch an der richtigen
+  Stelle einträgt, muss die Word-Vorlage an den gewünschten Stellen genau die
+  unterstützten Platzhalter der Form `{{NAME}}` enthalten (Groß-/
+  Kleinschreibung beachten) - welche das je Dokumenttyp sind, zeigt der
+  Einstellungen-Dialog direkt an. Enthält die erzeugte Datei danach noch
+  einen dieser Platzhalter unverändert, weist GuMa beim Erstellen darauf hin.
+  Beim Hochladen wird die Vorlage automatisch von Resten der Word-
+  Änderungsverfolgung sowie Autor-Metadaten bereinigt (siehe Hinweis unten).
 - **Rechnungen**: Zeitaufwand (Minuten je Position, automatische Rundung auf
   volle Stunden), Reisekosten, Porto, Telefon, Schreibgebühr (automatisch aus
   Zeichenzahl), Kopierkosten (automatisch gestaffelt: erste 50 Seiten 0,50 €,
@@ -90,15 +102,18 @@ Wenn Text in Word bei eingeschalteter Änderungsverfolgung ("Änderungen
 nachverfolgen") gelöscht wird, verschwindet er nur optisch - in der Datei
 bleibt er vollständig gespeichert, auswertbar z. B. mit jedem Zip-/Textwerkzeug,
 bis man in Word explizit "Alle Änderungen annehmen" ausführt oder den
-Dokumentprüfer nutzt. Die mitgelieferte Gutachten-Vorlage wurde bereits
-programmatisch bereinigt (`app/docx_bereinigen.py`), ein automatisierter Test
-(`tests/test_docx_bereinigen.py`) stellt das dauerhaft sicher.
+Dokumentprüfer nutzt. GuMa bereinigt deshalb jede über die Einstellungen
+hinzugefügte Vorlage automatisch programmatisch (`app/docx_bereinigen.py`,
+`app/vorlagen.py`) - die eigentliche Datei auf der Festplatte bleibt
+unverändert, kopiert wird nur die bereinigte Version in den Vorlagen-Ordner.
+Ein automatisierter Test (`tests/test_docx_bereinigen.py`) stellt sicher,
+dass dabei wirklich alle Reste entfernt werden.
 
-Falls künftig eine **neue** Word-Vorlage eingebunden werden soll: am besten
-vorher in Word über "Überprüfen → Alle Änderungen annehmen" UND den
-Dokumentprüfer ("Datei → Informationen → Auf Probleme überprüfen →
-Dokument prüfen", Häkchen bei "Kommentare, Überarbeitungen ...") laufen
-lassen, bevor die Datei weitergegeben wird.
+Trotzdem vorsichtshalber empfehlenswert, bevor eine Vorlage weitergegeben
+oder aus einer fremden Quelle übernommen wird: in Word einmal "Überprüfen →
+Alle Änderungen annehmen" UND den Dokumentprüfer ("Datei → Informationen →
+Auf Probleme überprüfen → Dokument prüfen", Häkchen bei "Kommentare,
+Überarbeitungen ...") laufen lassen.
 
 ## Datensicherung
 
@@ -110,13 +125,9 @@ alle Fälle, Notizen und Rechnungen gesichert.
 ## Tests ausführen (optional, für Entwickler)
 
 ```
-venv\Scripts\pip install pytest lxml
+venv\Scripts\pip install -r requirements.txt pytest
 venv\Scripts\pytest tests\
 ```
-
-(`lxml` wird nur für den Test des Vorlagen-Bereinigungswerkzeugs gebraucht,
-nicht für den normalen Betrieb von GuMa - ohne `lxml` wird dieser eine Test
-automatisch übersprungen, alle anderen laufen trotzdem.)
 
 ## Weiterentwicklung
 

@@ -2,6 +2,11 @@
 data/
 dokumente/
 
+# Von Nutzerinnen selbst hinzugefügte Word-Vorlagen (siehe Datei-Menü →
+# Einstellungen → Vorlagen) - können persönliche Angaben wie Briefkopf
+# oder Unterschrift enthalten und sind daher wie Falldaten zu behandeln
+vorlagen/
+
 # Python
 __pycache__/
 *.pyc

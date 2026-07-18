@@ -1,15 +1,23 @@
 """
-Erstellt Word-Dokumente (Anschreiben, Gutachten-Grundgerüst) aus den
-vorbereiteten Vorlagen, indem {{PLATZHALTER}} durch echte Falldaten ersetzt
-werden. Die Formatierung der Vorlage bleibt erhalten.
+Erstellt Word-Dokumente (Anschreiben, Gutachten-Grundgerüst) aus einer von der
+Nutzerin selbst hinterlegten Word-Vorlage (siehe app.vorlagen), indem
+{{PLATZHALTER}} durch echte Falldaten ersetzt werden. Die Formatierung der
+Vorlage bleibt erhalten.
 """
 import os
 import re
 import docx
 
-TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates")
-
 PLATZHALTER_MUSTER = re.compile(r"\{\{[A-Z_]+\}\}")
+
+# Diese Platzhalter füllt GuMa beim Erstellen automatisch aus - eine eigene
+# Word-Vorlage muss genau diese Tokens (Groß-/Kleinschreibung beachten)
+# verwenden, damit z.B. der Name an der richtigen Stelle landet.
+ANSCHREIBEN_PLATZHALTER = [
+    "EMPFAENGER_ANREDE", "EMPFAENGER_ANREDE_ENDUNG", "EMPFAENGER_NAME",
+    "DATUM", "RICHTER_TEXT", "KINDER", "GUTACHTER_TELEFON", "GUTACHTER_NAME",
+]
+GUTACHTEN_PLATZHALTER = ["GERICHT", "ABTEILUNG", "DATUM", "AKTENZEICHEN"]
 
 
 def _ersetze_in_paragraph(paragraph, werte: dict):
@@ -53,7 +61,7 @@ def offene_platzhalter(pfad: str):
     return gefunden
 
 
-def anschreiben_erstellen(fall: dict, einstellungen: dict, ausgabe_pfad: str, richter_text: str = ""):
+def anschreiben_erstellen(fall: dict, einstellungen: dict, ausgabe_pfad: str, vorlage_pfad: str, richter_text: str = ""):
     anrede = fall.get("empfaenger_anrede", "Frau")
     endung = "r" if anrede == "Herr" else ""
     werte = {
@@ -66,16 +74,14 @@ def anschreiben_erstellen(fall: dict, einstellungen: dict, ausgabe_pfad: str, ri
         "GUTACHTER_TELEFON": einstellungen.get("telefon", ""),
         "GUTACHTER_NAME": einstellungen.get("name", ""),
     }
-    vorlage = os.path.join(TEMPLATES_DIR, "anschreiben_vorlage.docx")
-    return fuelle_dokument(vorlage, ausgabe_pfad, werte)
+    return fuelle_dokument(vorlage_pfad, ausgabe_pfad, werte)
 
 
-def gutachten_erstellen(fall: dict, ausgabe_pfad: str):
+def gutachten_erstellen(fall: dict, ausgabe_pfad: str, vorlage_pfad: str):
     werte = {
         "GERICHT": fall.get("gericht", ""),
         "ABTEILUNG": fall.get("abteilung", ""),
         "DATUM": fall.get("datum", ""),
         "AKTENZEICHEN": fall.get("aktenzeichen", ""),
     }
-    vorlage = os.path.join(TEMPLATES_DIR, "gutachten_vorlage.docx")
-    return fuelle_dokument(vorlage, ausgabe_pfad, werte)
+    return fuelle_dokument(vorlage_pfad, ausgabe_pfad, werte)

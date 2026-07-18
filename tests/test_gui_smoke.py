@@ -10,6 +10,7 @@ import sys
 import shutil
 import tempfile
 import unittest
+import docx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,6 +18,15 @@ from tests.tk_stub import build_stub_tkinter
 build_stub_tkinter()
 
 import app.db as db_modul
+from app import docgen as docgen_modul
+from app import vorlagen as vorlagen_modul
+
+
+def _test_vorlage_bauen(pfad, platzhalter):
+    dokument = docx.Document()
+    for name in platzhalter:
+        dokument.add_paragraph("{{%s}}" % name)
+    dokument.save(pfad)
 
 
 class TestGuiDurchklick(unittest.TestCase):
@@ -38,10 +48,28 @@ class TestGuiDurchklick(unittest.TestCase):
         db_modul.init_db()
         repo_modul.einstellung_setzen("dokumente_ordner", os.path.join(self.tmp_dir, "dokumente"))
 
+        # Auch der Vorlagen-Ordner (app.vorlagen) hängt an BASIS_ORDNER - für
+        # Tests auf einen Testordner umleiten, damit keine Dateien im echten
+        # Projektordner landen.
+        gui_modul.BASIS_ORDNER = self.tmp_dir
+
         self.app = gui_modul.Anwendung()
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def _vorlage_hinzufuegen(self, typ):
+        """Legt eine Testvorlage des angegebenen Typs an und macht sie im
+        Dokumente-Tab auswählbar - entspricht dem, was die Nutzerin über
+        Einstellungen → Vorlagen tut."""
+        platzhalter = {
+            "anschreiben": docgen_modul.ANSCHREIBEN_PLATZHALTER,
+            "gutachten": docgen_modul.GUTACHTEN_PLATZHALTER,
+        }[typ]
+        quelle = os.path.join(self.tmp_dir, f"{typ}_quelle.docx")
+        _test_vorlage_bauen(quelle, platzhalter)
+        vorlagen_modul.vorlage_hinzufuegen(self.gui_modul.BASIS_ORDNER, typ, f"Test-{typ}", quelle)
+        self.app._vorlagen_dropdown_aktualisieren()
 
     def test_neuer_fall_ohne_suchtext_wird_ausgewaehlt(self):
         self.app._neuer_fall()
@@ -125,7 +153,17 @@ class TestGuiDurchklick(unittest.TestCase):
         self.app._fall_loeschen()
         self.assertNotIn(str(fall_id), self.app.fall_baum.get_children())
 
+    def test_anschreiben_erstellen_ohne_vorlage_zeigt_warnung(self):
+        """GuMa liefert keine Vorlagen mehr mit - ohne selbst hinzugefügte
+        Vorlage darf nichts erstellt werden, sondern es muss ein klarer
+        Hinweis erscheinen."""
+        self.app._neuer_fall()
+        self.app._anschreiben_erstellen()
+        from tkinter import messagebox
+        self.assertTrue(len(messagebox._calls["showwarning"]) >= 1)
+
     def test_anschreiben_erstellen_ueber_gui_speichert_automatisch_im_fallordner(self):
+        self._vorlage_hinzufuegen("anschreiben")
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("2 F 2/26")
         self.app._stammdaten_speichern()
@@ -143,6 +181,7 @@ class TestGuiDurchklick(unittest.TestCase):
         self.assertIn("Musterfrau", text)
 
     def test_anschreiben_zweimal_erstellen_ueberschreibt_nicht(self):
+        self._vorlage_hinzufuegen("anschreiben")
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("8 F 8/26")
         self.app._stammdaten_speichern()
@@ -156,6 +195,7 @@ class TestGuiDurchklick(unittest.TestCase):
         self.assertEqual(len(erzeugte), 2, "Die zweite Datei darf die erste nicht überschreiben")
 
     def test_gutachten_erstellen_ueber_gui_speichert_automatisch_im_fallordner(self):
+        self._vorlage_hinzufuegen("gutachten")
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("3 F 3/26")
         self.app.stamm_vars["gericht"].set("Augsburg")

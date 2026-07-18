@@ -11,6 +11,7 @@ from app.db import init_db, DB_PATH
 from app.gui_rechnung import RechnungFenster
 from app import docgen
 from app import dateien
+from app import vorlagen
 from app import design
 
 BASIS_ORDNER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -395,6 +396,7 @@ class Anwendung(tk.Tk):
         self.empfaenger_anrede_var = tk.StringVar(value="Frau")
         self.empfaenger_name_var = tk.StringVar()
         self.anschreiben_datum_var = tk.StringVar(value=heute())
+        self.anschreiben_vorlage_var = tk.StringVar()
 
         ttk.Label(anschreiben_frame, text="Anrede:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(anschreiben_frame, textvariable=self.empfaenger_anrede_var, values=["Frau", "Herr"], width=8, state="readonly").grid(row=0, column=1, padx=5)
@@ -402,23 +404,59 @@ class Anwendung(tk.Tk):
         ttk.Entry(anschreiben_frame, textvariable=self.empfaenger_name_var, width=25).grid(row=0, column=3, padx=5)
         ttk.Label(anschreiben_frame, text="Datum:").grid(row=0, column=4, sticky="w")
         ttk.Entry(anschreiben_frame, textvariable=self.anschreiben_datum_var, width=12).grid(row=0, column=5, padx=5)
-        ttk.Button(anschreiben_frame, text="Anschreiben erstellen...", command=self._anschreiben_erstellen).grid(row=0, column=6, padx=10)
+
+        ttk.Label(anschreiben_frame, text="Vorlage:").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        self.anschreiben_vorlage_combobox = ttk.Combobox(
+            anschreiben_frame, textvariable=self.anschreiben_vorlage_var, width=32, state="readonly"
+        )
+        self.anschreiben_vorlage_combobox.grid(row=1, column=1, columnspan=3, sticky="w", padx=5, pady=(6, 0))
+        ttk.Button(anschreiben_frame, text="Anschreiben erstellen...", command=self._anschreiben_erstellen).grid(
+            row=1, column=4, columnspan=2, padx=10, pady=(6, 0), sticky="w"
+        )
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=10)
 
         ttk.Label(tab, text="Gutachten-Grundgerüst erstellen", font=("TkDefaultFont", 10, "bold")).pack(anchor="w", pady=(0, 5))
-        ttk.Label(tab, text="Erstellt eine Kopie der Gutachten-Vorlage mit ausgefüllter Titelseite\n"
+        ttk.Label(tab, text="Erstellt eine Kopie der gewählten Gutachten-Vorlage mit ausgefüllter Titelseite\n"
                              "(Gericht, Abteilung, Datum, Aktenzeichen). Der restliche Text wird direkt in Word verfasst.",
                   justify="left").pack(anchor="w")
         self.gutachten_datum_var = tk.StringVar(value=heute())
+        self.gutachten_vorlage_var = tk.StringVar()
         gutachten_frame = ttk.Frame(tab)
         gutachten_frame.pack(fill="x", pady=(5, 0))
         ttk.Label(gutachten_frame, text="Datum:").pack(side="left")
         ttk.Entry(gutachten_frame, textvariable=self.gutachten_datum_var, width=12).pack(side="left", padx=5)
+        ttk.Label(gutachten_frame, text="Vorlage:").pack(side="left", padx=(15, 0))
+        self.gutachten_vorlage_combobox = ttk.Combobox(
+            gutachten_frame, textvariable=self.gutachten_vorlage_var, width=32, state="readonly"
+        )
+        self.gutachten_vorlage_combobox.pack(side="left", padx=5)
         ttk.Button(gutachten_frame, text="Gutachten erstellen...", command=self._gutachten_erstellen).pack(side="left", padx=10)
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=10)
-        ttk.Button(tab, text="Dokumente-Ordner dieses Falls öffnen", command=self._dokumente_ordner_oeffnen).pack(anchor="w")
+        ttk.Label(
+            tab,
+            text="Keine passende Vorlage dabei? Unter Datei → Stammdaten / Einstellungen können eigene\n"
+                 "Word-Vorlagen hinzugefügt werden.",
+            justify="left", font=("TkDefaultFont", 8, "italic"),
+        ).pack(anchor="w")
+        ttk.Button(tab, text="Dokumente-Ordner dieses Falls öffnen", command=self._dokumente_ordner_oeffnen).pack(anchor="w", pady=(8, 0))
+
+        self._vorlagen_dropdown_aktualisieren()
+
+    def _vorlagen_combobox_befuellen(self, combobox, var, vorlagen_nach_name):
+        namen = list(vorlagen_nach_name.keys())
+        combobox.config(values=namen)
+        if var.get() not in vorlagen_nach_name:
+            var.set(namen[0] if namen else "")
+
+    def _vorlagen_dropdown_aktualisieren(self):
+        """Liest die hinterlegten Vorlagen neu ein - wird beim Start sowie nach
+        Änderungen an den Vorlagen in den Einstellungen aufgerufen."""
+        self._anschreiben_vorlagen = {v["name"]: v for v in repo.vorlagen_liste("anschreiben")}
+        self._gutachten_vorlagen = {v["name"]: v for v in repo.vorlagen_liste("gutachten")}
+        self._vorlagen_combobox_befuellen(self.anschreiben_vorlage_combobox, self.anschreiben_vorlage_var, self._anschreiben_vorlagen)
+        self._vorlagen_combobox_befuellen(self.gutachten_vorlage_combobox, self.gutachten_vorlage_var, self._gutachten_vorlagen)
 
     def _fall_ordner(self):
         fall = repo.fall_holen(self.aktueller_fall_id)
@@ -431,6 +469,14 @@ class Anwendung(tk.Tk):
         if not self.aktueller_fall_id:
             messagebox.showwarning("Kein Fall", "Bitte zuerst einen Fall auswählen.")
             return
+        vorlage = self._anschreiben_vorlagen.get(self.anschreiben_vorlage_var.get())
+        if not vorlage:
+            messagebox.showwarning(
+                "Keine Vorlage",
+                "Es ist noch keine Anschreiben-Vorlage hinterlegt.\n\n"
+                "Bitte unter Datei → Stammdaten / Einstellungen eine Word-Vorlage hinzufügen.",
+            )
+            return
         fall = repo.fall_holen(self.aktueller_fall_id)
         fall = dict(fall)
         fall["empfaenger_anrede"] = self.empfaenger_anrede_var.get()
@@ -441,13 +487,21 @@ class Anwendung(tk.Tk):
         ordner = self._fall_ordner()
         dateiname = dateien.eindeutigen_dateinamen(ordner, f"Anschreiben_{fall['empfaenger_name'] or 'Empfaenger'}.docx")
         pfad = os.path.join(ordner, dateiname)
-        docgen.anschreiben_erstellen(fall, einstellungen, pfad)
+        docgen.anschreiben_erstellen(fall, einstellungen, pfad, vorlagen.vorlage_pfad(BASIS_ORDNER, vorlage))
         self._unterlagen_laden()
-        self._dokument_oeffnen_und_melden(pfad, "Anschreiben")
+        self._dokument_oeffnen_und_melden(pfad, "Anschreiben", docgen.offene_platzhalter(pfad))
 
     def _gutachten_erstellen(self):
         if not self.aktueller_fall_id:
             messagebox.showwarning("Kein Fall", "Bitte zuerst einen Fall auswählen.")
+            return
+        vorlage = self._gutachten_vorlagen.get(self.gutachten_vorlage_var.get())
+        if not vorlage:
+            messagebox.showwarning(
+                "Keine Vorlage",
+                "Es ist noch keine Gutachten-Vorlage hinterlegt.\n\n"
+                "Bitte unter Datei → Stammdaten / Einstellungen eine Word-Vorlage hinzufügen.",
+            )
             return
         fall = repo.fall_holen(self.aktueller_fall_id)
         fall = dict(fall)
@@ -456,11 +510,11 @@ class Anwendung(tk.Tk):
         ordner = self._fall_ordner()
         dateiname = dateien.eindeutigen_dateinamen(ordner, "Gutachten.docx")
         pfad = os.path.join(ordner, dateiname)
-        docgen.gutachten_erstellen(fall, pfad)
+        docgen.gutachten_erstellen(fall, pfad, vorlagen.vorlage_pfad(BASIS_ORDNER, vorlage))
         self._unterlagen_laden()
-        self._dokument_oeffnen_und_melden(pfad, "Gutachten-Grundgerüst")
+        self._dokument_oeffnen_und_melden(pfad, "Gutachten-Grundgerüst", docgen.offene_platzhalter(pfad))
 
-    def _dokument_oeffnen_und_melden(self, pfad, bezeichnung):
+    def _dokument_oeffnen_und_melden(self, pfad, bezeichnung, offene_platzhalter=None):
         geoeffnet = False
         try:
             os.startfile(pfad)  # Windows: öffnet die Datei direkt in Word
@@ -469,10 +523,18 @@ class Anwendung(tk.Tk):
             pass
         except OSError:
             pass
+        hinweis = ""
+        if offene_platzhalter:
+            hinweis = (
+                "\n\nAchtung: Die Vorlage enthält Platzhalter, die GuMa nicht befüllen konnte:\n"
+                + ", ".join(sorted(offene_platzhalter))
+                + "\n\nBitte im Dokument von Hand prüfen bzw. in der Vorlage die unterstützten "
+                  "Platzhalter-Namen verwenden."
+            )
         if geoeffnet:
-            messagebox.showinfo("Erstellt", f"{bezeichnung} wurde erstellt und wird geöffnet:\n{pfad}")
+            messagebox.showinfo("Erstellt", f"{bezeichnung} wurde erstellt und wird geöffnet:\n{pfad}{hinweis}")
         else:
-            messagebox.showinfo("Erstellt", f"{bezeichnung} wurde erstellt:\n{pfad}")
+            messagebox.showinfo("Erstellt", f"{bezeichnung} wurde erstellt:\n{pfad}{hinweis}")
 
     def _dokumente_ordner_oeffnen(self):
         if not self.aktueller_fall_id:
@@ -679,7 +741,16 @@ class Anwendung(tk.Tk):
 
         canvas.bind("<Enter>", _mausrad_aktivieren)
         canvas.bind("<Leave>", _mausrad_deaktivieren)
-        fenster.bind("<Destroy>", lambda e: _mausrad_deaktivieren() if e.widget is fenster else None)
+
+        def _fenster_geschlossen(event):
+            if event.widget is fenster:
+                _mausrad_deaktivieren()
+                # Vorlagen können bereits während des Dialogs (unabhängig von
+                # "Speichern"/"Abbrechen") hinzugefügt oder entfernt worden
+                # sein - Dropdown im Dokumente-Tab entsprechend auffrischen.
+                self._vorlagen_dropdown_aktualisieren()
+
+        fenster.bind("<Destroy>", _fenster_geschlossen)
 
         # --- Speicherort für Fälle/Dokumente ---
         ordner_rahmen = ttk.LabelFrame(inhalt, text="Speicherort für Fälle und Dokumente", padding=10)
@@ -724,6 +795,86 @@ class Anwendung(tk.Tk):
             var = tk.StringVar(value=werte.get(schluessel, ""))
             ttk.Entry(stamm_rahmen, textvariable=var, width=35).grid(row=i, column=1, pady=4, padx=5)
             vars_[schluessel] = var
+
+        # --- Vorlagen für Anschreiben/Gutachten ---
+        vorlagen_rahmen = ttk.LabelFrame(inhalt, text="Vorlagen für Anschreiben und Gutachten", padding=10)
+        vorlagen_rahmen.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(5, 10))
+
+        ttk.Label(
+            vorlagen_rahmen,
+            text="Eigene Word-Vorlagen (.docx) hinzufügen. GuMa ersetzt darin automatisch alle\n"
+                 "unten aufgeführten {{PLATZHALTER}} durch die jeweiligen Falldaten.",
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+
+        VORLAGEN_TYP_BESCHRIFTUNG = {"anschreiben": "Anschreiben", "gutachten": "Gutachten"}
+        vorlagen_platzhalter_text = {
+            "anschreiben": ", ".join("{{%s}}" % p for p in docgen.ANSCHREIBEN_PLATZHALTER),
+            "gutachten": ", ".join("{{%s}}" % p for p in docgen.GUTACHTEN_PLATZHALTER),
+        }
+        vorlagen_zeilen = {"anschreiben": [], "gutachten": []}
+        vorlagen_listen_container = {}
+
+        def vorlagen_liste_neu_aufbauen(typ):
+            for zeile in vorlagen_zeilen[typ]:
+                zeile.destroy()
+            vorlagen_zeilen[typ] = []
+            for vorlage in repo.vorlagen_liste(typ):
+                zeile = ttk.Frame(vorlagen_listen_container[typ])
+                zeile.pack(fill="x", anchor="w")
+                ttk.Label(zeile, text=vorlage["name"], width=35).pack(side="left")
+                ttk.Button(
+                    zeile, text="Entfernen",
+                    command=lambda v=vorlage, t=typ: vorlage_entfernen_dialog(t, v),
+                ).pack(side="left", padx=5)
+                vorlagen_zeilen[typ].append(zeile)
+            _scrollregion_aktualisieren()
+
+        def vorlage_hinzufuegen_dialog(typ):
+            quellpfad = filedialog.askopenfilename(
+                title=f"Word-Vorlage für {VORLAGEN_TYP_BESCHRIFTUNG[typ]} wählen",
+                filetypes=[("Word-Dokument", "*.docx")],
+                parent=fenster,
+            )
+            if not quellpfad:
+                return
+            vorschlag = os.path.splitext(os.path.basename(quellpfad))[0]
+            name = simpledialog.askstring(
+                "Vorlage benennen", "Name für diese Vorlage:", initialvalue=vorschlag, parent=fenster
+            )
+            if not name:
+                return
+            try:
+                vorlagen.vorlage_hinzufuegen(BASIS_ORDNER, typ, name, quellpfad)
+            except Exception as fehler:
+                messagebox.showerror("Fehler beim Hinzufügen", str(fehler), parent=fenster)
+                return
+            vorlagen_liste_neu_aufbauen(typ)
+
+        def vorlage_entfernen_dialog(typ, vorlage):
+            if not messagebox.askyesno(
+                "Vorlage entfernen", f"Vorlage '{vorlage['name']}' wirklich entfernen?", parent=fenster
+            ):
+                return
+            vorlagen.vorlage_entfernen(BASIS_ORDNER, vorlage)
+            vorlagen_liste_neu_aufbauen(typ)
+
+        for typ in repo.VORLAGEN_TYPEN:
+            typ_rahmen = ttk.Frame(vorlagen_rahmen)
+            typ_rahmen.pack(fill="x", pady=(4, 8))
+            ttk.Label(typ_rahmen, text=f"{VORLAGEN_TYP_BESCHRIFTUNG[typ]}:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+            ttk.Label(
+                typ_rahmen,
+                text=f"Unterstützte Platzhalter: {vorlagen_platzhalter_text[typ]}",
+                justify="left", font=("TkDefaultFont", 8), wraplength=520,
+            ).pack(anchor="w")
+            liste_container = ttk.Frame(typ_rahmen)
+            liste_container.pack(fill="x", anchor="w", pady=(4, 4))
+            vorlagen_listen_container[typ] = liste_container
+            ttk.Button(typ_rahmen, text="Vorlage hinzufügen...", command=lambda t=typ: vorlage_hinzufuegen_dialog(t)).pack(anchor="w")
+
+        for typ in repo.VORLAGEN_TYPEN:
+            vorlagen_liste_neu_aufbauen(typ)
 
         def speichern():
             alter_ordner = dateien.ermittle_dokumente_ordner(BASIS_ORDNER, repo.einstellungen_holen())

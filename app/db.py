@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS einstellungen (
     schluessel TEXT PRIMARY KEY,
     wert TEXT
 );
+
+CREATE TABLE IF NOT EXISTS vorlagen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    typ TEXT NOT NULL,
+    name TEXT NOT NULL,
+    dateiname TEXT NOT NULL,
+    erstellt_am TEXT
+);
 """
 
 STANDARD_ZEITPOSTEN = [
