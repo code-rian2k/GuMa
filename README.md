@@ -145,8 +145,11 @@ versioniert).
 
 ## Lizenz
 
-© 2026 HB ([www.hofbrueckl.com](https://www.hofbrueckl.com)). Alle Rechte
-vorbehalten - siehe [LICENSE](LICENSE). Diese Software ist keine
-Open-Source-Software; der Quellcode liegt hier ausschließlich zur eigenen
-Nachvollziehbarkeit und Weiterentwicklung offen. Nutzung, Veränderung oder
-Weitergabe nur mit ausdrücklicher Zustimmung der Urheberin.
+GuMa ist freie Software unter der **GNU General Public License v3.0
+(GPLv3)** - siehe [LICENSE](LICENSE) bzw. der vollständige, verbindliche
+Lizenztext unter <https://www.gnu.org/licenses/gpl-3.0.html>. Kurz
+zusammengefasst: Sie dürfen GuMa frei nutzen, verändern und weitergeben,
+auch kommerziell - veränderte Versionen müssen dabei ebenfalls unter der
+GPLv3 mit offenem Quellcode weitergegeben werden.
+
+© 2026 HB ([www.hofbrueckl.com](https://www.hofbrueckl.com))
