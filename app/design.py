@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 
 VERSION = "V11"
-AUTOR_KUERZEL = "HB"
+AUTOR_KUERZEL = "HB."
 WEBSITE_URL = "https://www.hofbrueckl.com"
 
 PROGRAMMNAME = f"GuMa {VERSION} by {AUTOR_KUERZEL}"

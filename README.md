@@ -2,7 +2,7 @@
   <img src="app/assets/logo_icon.png" alt="GuMa Logo" width="120">
 </p>
 
-# GuMa V11 by HB - Fallverwaltung für psychologische Gutachten
+# GuMa V11 by HB. - Fallverwaltung für psychologische Gutachten
 
 Lokale Software zur Verwaltung von Gutachterfällen: Falldaten, Fristen,
 Notizen, Erstellung von Anschreiben/Gutachten aus selbst hinterlegten
@@ -152,4 +152,4 @@ zusammengefasst: Sie dürfen GuMa frei nutzen, verändern und weitergeben,
 auch kommerziell - veränderte Versionen müssen dabei ebenfalls unter der
 GPLv3 mit offenem Quellcode weitergegeben werden.
 
-© 2026 HB ([www.hofbrueckl.com](https://www.hofbrueckl.com))
+© 2026 HB. ([www.hofbrueckl.com](https://www.hofbrueckl.com))
