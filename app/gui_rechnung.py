@@ -28,6 +28,8 @@ class RechnungFenster(tk.Toplevel):
 
         self.zeitposten_zeilen = []  # Liste von dicts mit id, bezeichnung_var, minuten_var
         self.zusatzposten_zeilen = []  # Liste von dicts mit id, bezeichnung_var, betrag_var
+        self._dirty = False
+        self.protocol("WM_DELETE_WINDOW", self._schliessen)
 
         # Kopien-Staffelung kommt aus den Einstellungen (Datei → Stammdaten /
         # Einstellungen), fällt ohne eigene Angabe auf die Werkseinstellung
@@ -52,7 +54,7 @@ class RechnungFenster(tk.Toplevel):
         button_leiste.pack(side="bottom", fill="x")
         ttk.Button(button_leiste, text="Speichern", style="Accent.TButton", command=self._speichern).pack(side="left", padx=5)
         ttk.Button(button_leiste, text="Als Excel exportieren...", command=self._exportieren).pack(side="left", padx=5)
-        ttk.Button(button_leiste, text="Schließen", command=self.destroy).pack(side="right", padx=5)
+        ttk.Button(button_leiste, text="Schließen", command=self._schliessen).pack(side="right", padx=5)
 
         hinweis_leiste = ttk.Frame(self, padding=(10, 0))
         hinweis_leiste.pack(side="bottom", fill="x")
@@ -107,6 +109,8 @@ class RechnungFenster(tk.Toplevel):
 
         self.rechnungsnummer_var = tk.StringVar()
         self.datum_var = tk.StringVar()
+        self.rechnungsnummer_var.trace_add("write", self._dirty_setzen)
+        self.datum_var.trace_add("write", self._dirty_setzen)
 
         ttk.Label(kopf, text="Rechnungsnummer:").grid(row=0, column=0, sticky="w")
         ttk.Entry(kopf, textvariable=self.rechnungsnummer_var, width=20).grid(row=0, column=1, sticky="w", padx=5)
@@ -127,7 +131,7 @@ class RechnungFenster(tk.Toplevel):
         ttk.Label(stundensatz_frame, text="Stundensatz (€):").pack(side="left")
         self.stundensatz_var = tk.StringVar(value="100")
         ttk.Entry(stundensatz_frame, textvariable=self.stundensatz_var, width=10).pack(side="left", padx=5)
-        self.stundensatz_var.trace_add("write", lambda *_: self._neu_berechnen())
+        self.stundensatz_var.trace_add("write", self._feld_geaendert)
 
         # --- Aufwendungen ---
         aufw_rahmen = ttk.LabelFrame(inhalt, text="2. Aufwendungen", padding=10)
@@ -155,7 +159,7 @@ class RechnungFenster(tk.Toplevel):
             ttk.Label(f, text=label, width=28).pack(side="left")
             entry = ttk.Entry(f, textvariable=var, width=12)
             entry.pack(side="left")
-            var.trace_add("write", lambda *_: self._neu_berechnen())
+            var.trace_add("write", self._feld_geaendert)
 
         ttk.Label(
             aufw_rahmen,
@@ -197,13 +201,15 @@ class RechnungFenster(tk.Toplevel):
         min_entry.pack(side="left", padx=2)
         ttk.Label(zeile_frame, text="Min.").pack(side="left")
 
-        min_var.trace_add("write", lambda *_: self._neu_berechnen())
+        bez_var.trace_add("write", self._dirty_setzen)
+        min_var.trace_add("write", self._feld_geaendert)
 
         eintrag = {"id": posten_id, "frame": zeile_frame, "bezeichnung": bez_var, "minuten": min_var}
 
         def entfernen():
             self.zeitposten_zeilen.remove(eintrag)
             zeile_frame.destroy()
+            self._dirty_setzen()
             self._neu_berechnen()
 
         ttk.Button(zeile_frame, text="✕", width=3, command=entfernen).pack(side="left", padx=2)
@@ -223,13 +229,15 @@ class RechnungFenster(tk.Toplevel):
         betrag_entry.pack(side="left", padx=2)
         ttk.Label(zeile_frame, text="€").pack(side="left")
 
-        betrag_var.trace_add("write", lambda *_: self._neu_berechnen())
+        bez_var.trace_add("write", self._dirty_setzen)
+        betrag_var.trace_add("write", self._feld_geaendert)
 
         eintrag = {"id": posten_id, "frame": zeile_frame, "bezeichnung": bez_var, "betrag": betrag_var}
 
         def entfernen():
             self.zusatzposten_zeilen.remove(eintrag)
             zeile_frame.destroy()
+            self._dirty_setzen()
             self._neu_berechnen()
 
         ttk.Button(zeile_frame, text="✕", width=3, command=entfernen).pack(side="left", padx=2)
@@ -259,6 +267,32 @@ class RechnungFenster(tk.Toplevel):
 
         for posten in repo.aufwandsposten_fuer_rechnung(self.rechnung_id):
             self._zusatzposten_zeile_hinzufuegen(posten["bezeichnung"], posten["betrag"], posten["id"])
+
+        # Das Befüllen der Felder oben löst über die Trace-Bindungen selbst
+        # ein "dirty" aus - deshalb hier am Ende wieder zurücksetzen.
+        self._dirty = False
+
+    def _dirty_setzen(self, *_args):
+        self._dirty = True
+
+    def _feld_geaendert(self, *_args):
+        self._dirty_setzen()
+        self._neu_berechnen()
+
+    def _ungespeicherte_aenderungen_bestaetigen(self) -> bool:
+        if not self._dirty:
+            return True
+        return messagebox.askyesno(
+            "Ungespeicherte Änderungen",
+            "Es gibt ungespeicherte Änderungen an dieser Rechnung.\n\n"
+            "Ohne Speichern schließen und Änderungen verwerfen?",
+            parent=self,
+        )
+
+    def _schliessen(self):
+        if not self._ungespeicherte_aenderungen_bestaetigen():
+            return
+        self.destroy()
 
     def _zahl(self, var, standard=0.0):
         return self._text_zu_zahl(var.get(), standard)
@@ -369,6 +403,7 @@ class RechnungFenster(tk.Toplevel):
         for entfernte_id in vorhandene_aufwand_ids - aktuelle_aufwand_ids:
             repo.aufwandsposten_loeschen(entfernte_id)
 
+        self._dirty = False
         messagebox.showinfo("Gespeichert", "Rechnung wurde gespeichert.", parent=self)
 
     def _exportieren(self):

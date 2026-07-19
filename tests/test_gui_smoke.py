@@ -168,6 +168,25 @@ class TestGuiDurchklick(unittest.TestCase):
         termine = repo.termine_liste(self.app.aktueller_fall_id)
         self.assertEqual(len(termine), 1)
 
+    def test_fristen_uebersicht_oeffnet_ohne_fehler(self):
+        self.app._neuer_fall()
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+        self.app._termin_hinzufuegen()
+        self.app._fristen_uebersicht_oeffnen()
+
+    def test_springe_zu_fall_waehlt_fall_aus_und_wechselt_tab(self):
+        self.app._neuer_fall()
+        erster_fall_id = self.app.aktueller_fall_id
+        self.app._neuer_fall()
+
+        # Aktiver Suchfilter, der den Zielfall ausblenden würde, muss geräumt werden
+        self.app.suche_var.set("irgendein Text, der zu nichts passt")
+
+        self.app._springe_zu_fall(erster_fall_id)
+
+        self.assertEqual(self.app.aktueller_fall_id, erster_fall_id)
+        self.assertEqual(self.app.suche_var.get(), "")
+
     def test_datei_hinzufuegen_zu_fall(self):
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("5 F 55/26")
@@ -360,6 +379,53 @@ class TestGuiDurchklick(unittest.TestCase):
         fenster._speichern()
         self.assertEqual(repo.aufwandsposten_fuer_rechnung(rechnung_id), [])
 
+    def test_rechnungsfenster_warnt_bei_ungespeicherten_aenderungen(self):
+        from tkinter import messagebox
+
+        self.app._neuer_fall()
+        self.app.stamm_vars["aktenzeichen"].set("12 F 12/26")
+        self.app._stammdaten_speichern()
+
+        from app import repo
+        rechnung_id = repo.rechnung_anlegen(self.app.aktueller_fall_id, "01-2026", "08.07.2026")
+
+        from app.gui_rechnung import RechnungFenster
+        fall = repo.fall_holen(self.app.aktueller_fall_id)
+        fenster = RechnungFenster(self.app, dict(fall), rechnung_id, self.app._fall_ordner())
+        self.assertFalse(fenster._dirty, "nach dem Laden darf nichts als geändert markiert sein")
+
+        fenster.stundensatz_var.set("150")
+        self.assertTrue(fenster._dirty)
+
+        # "Nein" -> Fenster bleibt offen (wird nicht zerstört)
+        messagebox._antwort_ja_nein["value"] = False
+        fenster._schliessen()
+        self.assertTrue(fenster._dirty)
+
+        # "Ja" -> Fenster wird geschlossen, ohne dass gespeichert wurde
+        messagebox._antwort_ja_nein["value"] = True
+        fenster._schliessen()
+        rechnung = repo.rechnung_holen(rechnung_id)
+        self.assertEqual(rechnung["stundensatz"], 100.0)  # unverändert, da nicht gespeichert
+
+    def test_rechnungsfenster_schliesst_ohne_rueckfrage_nach_speichern(self):
+        from tkinter import messagebox
+
+        self.app._neuer_fall()
+        from app import repo
+        rechnung_id = repo.rechnung_anlegen(self.app.aktueller_fall_id, "01-2026", "08.07.2026")
+
+        from app.gui_rechnung import RechnungFenster
+        fall = repo.fall_holen(self.app.aktueller_fall_id)
+        fenster = RechnungFenster(self.app, dict(fall), rechnung_id, self.app._fall_ordner())
+        fenster.stundensatz_var.set("150")
+        fenster._speichern()
+        self.assertFalse(fenster._dirty)
+
+        anzahl_vorher = len(messagebox._calls["askyesno"])
+        fenster._schliessen()
+        self.assertEqual(len(messagebox._calls["askyesno"]), anzahl_vorher)
+
     def test_rechnung_excel_export_ueber_gui(self):
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("6 F 6/26")
@@ -441,6 +507,23 @@ class TestGuiDurchklick(unittest.TestCase):
         self.app._neuer_fall()
         self.assertIsNotNone(self.app.aktueller_fall_id)
         self.assertIn(str(self.app.aktueller_fall_id), self.app.fall_baum.get_children())
+
+    def test_status_filter_zeigt_nur_passende_faelle(self):
+        from app import repo
+
+        fall_offen = repo.fall_anlegen({"aktenzeichen": "1 F 1/26", "status": "offen"})
+        fall_bearbeitung = repo.fall_anlegen({"aktenzeichen": "2 F 2/26", "status": "in Bearbeitung"})
+        self.app._faelle_neu_laden()
+        self.assertEqual(len(self.app.fall_baum.get_children()), 2)
+
+        self.app.status_filter_var.set("in Bearbeitung")
+
+        self.assertEqual(self.app.fall_baum.get_children(), [str(fall_bearbeitung)])
+        self.assertNotIn(str(fall_offen), self.app.fall_baum.get_children())
+
+        self.app.status_filter_var.set("Alle")
+
+        self.assertEqual(len(self.app.fall_baum.get_children()), 2)
 
 
 if __name__ == "__main__":

@@ -69,19 +69,24 @@ def fall_loeschen(fall_id: int):
         conn.commit()
 
 
-def faelle_liste(suchtext: str = ""):
+def faelle_liste(suchtext: str = "", status: str = None):
     with get_conn() as conn:
+        bedingungen = []
+        parameter = []
         if suchtext:
             like = f"%{suchtext}%"
-            rows = conn.execute(
-                """SELECT * FROM faelle
-                WHERE aktenzeichen LIKE ? OR in_sachen LIKE ? OR kinder LIKE ?
-                   OR mutter_name LIKE ? OR vater_name LIKE ?
-                ORDER BY geaendert_am DESC""",
-                (like, like, like, like, like),
-            ).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM faelle ORDER BY geaendert_am DESC").fetchall()
+            bedingungen.append(
+                "(aktenzeichen LIKE ? OR in_sachen LIKE ? OR kinder LIKE ? "
+                "OR mutter_name LIKE ? OR vater_name LIKE ?)"
+            )
+            parameter += [like, like, like, like, like]
+        if status:
+            bedingungen.append("status = ?")
+            parameter.append(status)
+        where_klausel = f"WHERE {' AND '.join(bedingungen)}" if bedingungen else ""
+        rows = conn.execute(
+            f"SELECT * FROM faelle {where_klausel} ORDER BY geaendert_am DESC", parameter
+        ).fetchall()
         return [dict(r) for r in rows]
 
 
@@ -118,6 +123,21 @@ def termine_liste(fall_id: int):
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT * FROM termine WHERE fall_id = ?", (fall_id,)
+        ).fetchall()
+        eintraege = [dict(r) for r in rows]
+        eintraege.sort(key=lambda t: _termin_sortierschluessel(t["datum"]))
+        return eintraege
+
+
+def alle_offenen_termine():
+    """Alle noch nicht erledigten Termine über alle Fälle hinweg,
+    chronologisch sortiert - für die Fristen-Gesamtübersicht."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT termine.*, faelle.aktenzeichen, faelle.in_sachen
+               FROM termine
+               JOIN faelle ON faelle.id = termine.fall_id
+               WHERE termine.erledigt = 0"""
         ).fetchall()
         eintraege = [dict(r) for r in rows]
         eintraege.sort(key=lambda t: _termin_sortierschluessel(t["datum"]))

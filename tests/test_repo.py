@@ -44,6 +44,25 @@ class TestRepository(unittest.TestCase):
         treffer = repo.faelle_liste("Mustermann")
         self.assertEqual(len(treffer), 1)
 
+    def test_faelle_liste_filtert_nach_status(self):
+        repo.fall_anlegen({"aktenzeichen": "1 F 1/26", "status": "offen"})
+        repo.fall_anlegen({"aktenzeichen": "2 F 2/26", "status": "in Bearbeitung"})
+        repo.fall_anlegen({"aktenzeichen": "3 F 3/26", "status": "in Bearbeitung"})
+
+        treffer = repo.faelle_liste(status="in Bearbeitung")
+
+        self.assertEqual(len(treffer), 2)
+        self.assertTrue(all(f["status"] == "in Bearbeitung" for f in treffer))
+
+    def test_faelle_liste_kombiniert_suchtext_und_status(self):
+        repo.fall_anlegen({"aktenzeichen": "1 F 1/26", "in_sachen": "Mustermann", "status": "offen"})
+        repo.fall_anlegen({"aktenzeichen": "2 F 2/26", "in_sachen": "Mustermann", "status": "in Bearbeitung"})
+
+        treffer = repo.faelle_liste("Mustermann", "offen")
+
+        self.assertEqual(len(treffer), 1)
+        self.assertEqual(treffer[0]["aktenzeichen"], "1 F 1/26")
+
     def test_rechnung_hat_standard_zeitposten(self):
         fall_id = repo.fall_anlegen({"aktenzeichen": "1 F 1/26"})
         rechnung_id = repo.rechnung_anlegen(fall_id, "01-2026", "08.07.2026")
@@ -117,6 +136,29 @@ class TestRepository(unittest.TestCase):
         termine = repo.termine_liste(fall_id)
 
         self.assertEqual([t["beschreibung"] for t in termine], ["Klarer Termin", "Unklarer Termin"])
+
+    def test_alle_offenen_termine_ueber_mehrere_faelle_chronologisch(self):
+        fall_a = repo.fall_anlegen({"aktenzeichen": "1 F 1/26"})
+        fall_b = repo.fall_anlegen({"aktenzeichen": "2 F 2/26"})
+        repo.termin_anlegen(fall_a, "20.12.2025", "Termin Fall A")
+        repo.termin_anlegen(fall_b, "05.01.2026", "Termin Fall B")
+
+        termine = repo.alle_offenen_termine()
+
+        self.assertEqual([t["beschreibung"] for t in termine], ["Termin Fall A", "Termin Fall B"])
+        self.assertEqual(termine[0]["aktenzeichen"], "1 F 1/26")
+        self.assertEqual(termine[1]["aktenzeichen"], "2 F 2/26")
+
+    def test_alle_offenen_termine_blendet_erledigte_aus(self):
+        fall_id = repo.fall_anlegen({"aktenzeichen": "1 F 1/26"})
+        repo.termin_anlegen(fall_id, "01.01.2026", "Noch offen")
+        repo.termin_anlegen(fall_id, "02.01.2026", "Schon erledigt")
+        erledigter = next(t for t in repo.termine_liste(fall_id) if t["beschreibung"] == "Schon erledigt")
+        repo.termin_erledigt_setzen(erledigter["id"], True)
+
+        termine = repo.alle_offenen_termine()
+
+        self.assertEqual([t["beschreibung"] for t in termine], ["Noch offen"])
 
 
 if __name__ == "__main__":
