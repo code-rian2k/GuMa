@@ -168,11 +168,35 @@ class TestGuiDurchklick(unittest.TestCase):
         termine = repo.termine_liste(self.app.aktueller_fall_id)
         self.assertEqual(len(termine), 1)
 
-    def test_fristen_uebersicht_oeffnet_ohne_fehler(self):
+    def test_uebersicht_faelle_wird_bei_neuem_fall_aktualisiert(self):
+        self.app._neuer_fall()
+        self.app.stamm_vars["aktenzeichen"].set("1 F 1/26")
+        self.app._stammdaten_speichern()
+
+        self.assertIn(str(self.app.aktueller_fall_id), self.app.uebersicht_faelle_baum.get_children())
+
+    def test_uebersicht_fristen_zeigt_termine_ueber_alle_faelle(self):
         self.app._neuer_fall()
         self.app.neuer_termin_text.set("Ortstermin bei der Familie")
         self.app._termin_hinzufuegen()
-        self.app._fristen_uebersicht_oeffnen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        self.assertIn(str(termin_id), self.app.uebersicht_fristen_baum.get_children())
+
+    def test_uebersicht_fristen_bereits_beim_start_gefuellt_ohne_fallauswahl(self):
+        """Regressionstest: Beim (Neu-)Start der Anwendung ist noch kein Fall
+        ausgewählt. Trotzdem müssen bereits bestehende Fristen sofort im
+        Übersicht-Tab erscheinen, statt erst nach Auswahl eines Falls."""
+        self.app._neuer_fall()
+        self.app.neuer_termin_text.set("Bereits vorhandener Termin")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        neue_app = self.gui_modul.Anwendung()
+        self.assertIsNone(neue_app.aktueller_fall_id)
+        self.assertIn(str(termin_id), neue_app.uebersicht_fristen_baum.get_children())
 
     def test_springe_zu_fall_waehlt_fall_aus_und_wechselt_tab(self):
         self.app._neuer_fall()
@@ -186,6 +210,20 @@ class TestGuiDurchklick(unittest.TestCase):
 
         self.assertEqual(self.app.aktueller_fall_id, erster_fall_id)
         self.assertEqual(self.app.suche_var.get(), "")
+
+    def test_uebersicht_termin_oeffnen_springt_zu_fristen_tab(self):
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(fall_id)[0]["id"]
+
+        self.app._neuer_fall()  # anderer Fall ist jetzt ausgewählt
+        self.app.uebersicht_fristen_baum.selection_set(str(termin_id))
+        self.app._uebersicht_termin_oeffnen()
+
+        self.assertEqual(self.app.aktueller_fall_id, fall_id)
 
     def test_datei_hinzufuegen_zu_fall(self):
         self.app._neuer_fall()
