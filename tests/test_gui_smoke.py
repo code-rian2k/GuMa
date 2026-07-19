@@ -192,6 +192,25 @@ class TestGuiDurchklick(unittest.TestCase):
         rechnungen = repo.rechnungen_fuer_fall(self.app.aktueller_fall_id)
         self.assertEqual(len(rechnungen), 1)
 
+    def test_unterlagen_liste_aktualisiert_sich_nach_rechnungsfenster_schliessen(self):
+        """Eine als Excel exportierte Rechnung landet im Fall-Ordner - die
+        Unterlagen-Liste muss das ohne Fallwechsel sofort zeigen."""
+        self.app._neuer_fall()
+        from app import repo
+        rechnung_id = repo.rechnung_anlegen(self.app.aktueller_fall_id, "01-2026", "08.07.2026")
+
+        ordner = self.app._fall_ordner()
+        self.assertEqual(self.app.unterlagen_baum.get_children(), [])
+
+        # Simuliert die Datei, die ein Excel-Export im Rechnungsfenster erzeugt
+        exportierte_datei = os.path.join(ordner, "Rechnung_01-2026.xlsx")
+        with open(exportierte_datei, "w") as f:
+            f.write("platzhalter")
+
+        self.app._rechnung_fenster_oeffnen(rechnung_id)
+
+        self.assertIn(exportierte_datei, self.app.unterlagen_baum.get_children())
+
     def test_rechnung_neu_nutzt_standard_saetze_aus_einstellungen(self):
         from app import repo
         repo.einstellung_setzen("standard_stundensatz", "150")
