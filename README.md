@@ -150,11 +150,9 @@ versioniert).
 
 ## Lizenz
 
-GuMa ist freie Software unter der **GNU General Public License v3.0
-(GPLv3)** - siehe [LICENSE](LICENSE) bzw. der vollständige, verbindliche
-Lizenztext unter <https://www.gnu.org/licenses/gpl-3.0.html>. Kurz
-zusammengefasst: Sie dürfen GuMa frei nutzen, verändern und weitergeben,
-auch kommerziell - veränderte Versionen müssen dabei ebenfalls unter der
-GPLv3 mit offenem Quellcode weitergegeben werden.
-
-© 2026 HB. ([www.hofbrueckl.com](https://www.hofbrueckl.com))
+© 2026 Hofbrückl ([www.hofbrueckl.com](https://www.hofbrueckl.com)). Alle
+Rechte vorbehalten - siehe [LICENSE](LICENSE). Diese Software ist keine
+Open-Source-Software; der Quellcode liegt hier ausschließlich zur
+Transparenz und Nachvollziehbarkeit offen. Nutzung, Veränderung oder
+Weitergabe nur mit vorheriger Rücksprache und ausdrücklicher Zustimmung der
+Urheberin.
