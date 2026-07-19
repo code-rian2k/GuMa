@@ -23,6 +23,17 @@ BASIS_ORDNER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # gelangen.
 DOKUMENTE_ORDNER = None
 
+# Dezente Hintergrundfarbe je Status in der Fallliste - so ist auf einen
+# Blick erkennbar, wo ein Fall steht, ohne die Status-Spalte lesen zu müssen.
+STATUS_FARBEN = {
+    "offen": "#FDECEA",
+    "Ortstermin vereinbart": "#FFF6E0",
+    "in Bearbeitung": "#E8F1FB",
+    "Gutachten abgegeben": "#E9F7EF",
+    "abgerechnet": "#EAF7F6",
+    "abgeschlossen": "#F1F1F1",
+}
+
 
 def heute():
     return datetime.date.today().strftime("%d.%m.%Y")
@@ -195,8 +206,8 @@ class Anwendung(tk.Tk):
         for spalte, breite in zip(spalten, (110, 220, 130)):
             self.fall_baum.heading(spalte, text={"aktenzeichen": "Aktenzeichen", "in_sachen": "In Sachen", "status": "Status"}[spalte])
             self.fall_baum.column(spalte, width=breite)
-        self.fall_baum.tag_configure("gerade", background="#EEF3F5")
-        self.fall_baum.tag_configure("ungerade", background=design.FARBE_KARTE)
+        for status, farbe in STATUS_FARBEN.items():
+            self.fall_baum.tag_configure(status, background=farbe)
         self.fall_baum.pack(fill="both", expand=True)
         self.fall_baum.bind("<<TreeviewSelect>>", self._fall_ausgewaehlt)
 
@@ -223,10 +234,10 @@ class Anwendung(tk.Tk):
     def _faelle_neu_laden(self):
         for zeile in self.fall_baum.get_children():
             self.fall_baum.delete(zeile)
-        for i, fall in enumerate(repo.faelle_liste(self.suche_var.get())):
+        for fall in repo.faelle_liste(self.suche_var.get()):
             self.fall_baum.insert("", "end", iid=str(fall["id"]),
                                    values=(fall["aktenzeichen"], fall["in_sachen"], fall["status"]),
-                                   tags=("gerade" if i % 2 == 0 else "ungerade",))
+                                   tags=(fall["status"],))
 
     def _fall_ausgewaehlt(self, _event=None):
         auswahl = self.fall_baum.selection()
@@ -289,35 +300,53 @@ class Anwendung(tk.Tk):
         self.notebook.add(tab, text="Falldaten")
 
         self.stamm_vars = {}
-        felder = [
-            ("aktenzeichen", "Aktenzeichen"),
-            ("gericht", "Gericht"),
-            ("abteilung", "Abteilung"),
-            ("richter", "Richter/-in (für Anschreiben)"),
-            ("in_sachen", "In Sachen"),
-            ("kinder", "Kinder"),
-            ("mutter_name", "Name Mutter"),
-            ("mutter_anschrift", "Anschrift Mutter"),
-            ("vater_name", "Name Vater"),
-            ("vater_anschrift", "Anschrift Vater"),
+
+        verfahren_rahmen = ttk.LabelFrame(tab, text="Verfahren", padding=10)
+        verfahren_rahmen.pack(fill="x", pady=(0, 10))
+        verfahren_felder = [
+            ("aktenzeichen", "Aktenzeichen"), ("gericht", "Gericht"),
+            ("abteilung", "Abteilung"), ("richter", "Richter/-in (für Anschreiben)"),
+            ("in_sachen", "In Sachen"), ("kinder", "Kinder"),
         ]
-        for i, (schluessel, label) in enumerate(felder):
-            ttk.Label(tab, text=label + ":").grid(row=i, column=0, sticky="ne", pady=3)
+        for i, (schluessel, label) in enumerate(verfahren_felder):
+            ttk.Label(verfahren_rahmen, text=label + ":").grid(row=i, column=0, sticky="e", pady=3, padx=5)
             var = tk.StringVar()
-            ttk.Entry(tab, textvariable=var, width=60).grid(row=i, column=1, sticky="w", pady=3, padx=5)
+            ttk.Entry(verfahren_rahmen, textvariable=var, width=45).grid(row=i, column=1, sticky="w", pady=3, padx=5)
             self.stamm_vars[schluessel] = var
 
-        ttk.Label(tab, text="Status:").grid(row=len(felder), column=0, sticky="ne", pady=3)
+        eltern_rahmen = ttk.LabelFrame(tab, text="Eltern", padding=10)
+        eltern_rahmen.pack(fill="x", pady=(0, 10))
+        ttk.Label(eltern_rahmen, text="Mutter", font=("TkDefaultFont", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
+        ttk.Label(eltern_rahmen, text="Vater", font=("TkDefaultFont", 10, "bold")).grid(row=0, column=2, columnspan=2, sticky="w", padx=(25, 0), pady=(0, 5))
+        ttk.Label(eltern_rahmen, text="Name:").grid(row=1, column=0, sticky="e", padx=5, pady=3)
+        var = tk.StringVar()
+        ttk.Entry(eltern_rahmen, textvariable=var, width=26).grid(row=1, column=1, sticky="w", pady=3)
+        self.stamm_vars["mutter_name"] = var
+        ttk.Label(eltern_rahmen, text="Anschrift:").grid(row=2, column=0, sticky="e", padx=5, pady=3)
+        var = tk.StringVar()
+        ttk.Entry(eltern_rahmen, textvariable=var, width=26).grid(row=2, column=1, sticky="w", pady=3)
+        self.stamm_vars["mutter_anschrift"] = var
+        ttk.Label(eltern_rahmen, text="Name:").grid(row=1, column=2, sticky="e", padx=(25, 5), pady=3)
+        var = tk.StringVar()
+        ttk.Entry(eltern_rahmen, textvariable=var, width=26).grid(row=1, column=3, sticky="w", pady=3)
+        self.stamm_vars["vater_name"] = var
+        ttk.Label(eltern_rahmen, text="Anschrift:").grid(row=2, column=2, sticky="e", padx=(25, 5), pady=3)
+        var = tk.StringVar()
+        ttk.Entry(eltern_rahmen, textvariable=var, width=26).grid(row=2, column=3, sticky="w", pady=3)
+        self.stamm_vars["vater_anschrift"] = var
+
+        status_rahmen = ttk.LabelFrame(tab, text="Status & Auftrag", padding=10)
+        status_rahmen.pack(fill="both", expand=True)
+        ttk.Label(status_rahmen, text="Status:").grid(row=0, column=0, sticky="ne", pady=3, padx=5)
         self.status_var = tk.StringVar()
-        ttk.Combobox(tab, textvariable=self.status_var, values=repo.STATUS_OPTIONEN, width=30, state="readonly").grid(
-            row=len(felder), column=1, sticky="w", pady=3, padx=5
+        ttk.Combobox(status_rahmen, textvariable=self.status_var, values=repo.STATUS_OPTIONEN, width=30, state="readonly").grid(
+            row=0, column=1, sticky="w", pady=3, padx=5
         )
+        ttk.Label(status_rahmen, text="Auftragstext (Beweisbeschluss o.ä.):").grid(row=1, column=0, sticky="ne", pady=3, padx=5)
+        self.auftragstext_text = tk.Text(status_rahmen, width=60, height=5)
+        self.auftragstext_text.grid(row=1, column=1, sticky="w", pady=3, padx=5)
 
-        ttk.Label(tab, text="Auftragstext (Beweisbeschluss o.ä.):").grid(row=len(felder) + 1, column=0, sticky="ne", pady=3)
-        self.auftragstext_text = tk.Text(tab, width=60, height=6)
-        self.auftragstext_text.grid(row=len(felder) + 1, column=1, sticky="w", pady=3, padx=5)
-
-        ttk.Button(tab, text="Speichern", style="Accent.TButton", command=self._stammdaten_speichern).grid(row=len(felder) + 2, column=1, sticky="w", pady=10)
+        ttk.Button(tab, text="Speichern", style="Accent.TButton", command=self._stammdaten_speichern).pack(anchor="w", pady=10)
 
     def _stammdaten_laden(self):
         fall = repo.fall_holen(self.aktueller_fall_id) if self.aktueller_fall_id else None
