@@ -147,12 +147,17 @@ def notiz_loeschen(notiz_id: int):
 
 # ---------- Rechnungen ----------
 
-def rechnung_anlegen(fall_id: int, rechnungsnummer: str, datum: str):
+def rechnung_anlegen(
+    fall_id: int, rechnungsnummer: str, datum: str,
+    stundensatz: float = 100.0, km_satz: float = 0.42,
+    mwst_satz: float = 19.0, schreibgebuehr_satz: float = 1.5,
+) -> int:
     with get_conn() as conn:
         cur = conn.execute(
-            """INSERT INTO rechnungen (fall_id, rechnungsnummer, datum)
-               VALUES (?,?,?)""",
-            (fall_id, rechnungsnummer, datum),
+            """INSERT INTO rechnungen
+               (fall_id, rechnungsnummer, datum, stundensatz, km_satz, mwst_satz, schreibgebuehr_satz)
+               VALUES (?,?,?,?,?,?,?)""",
+            (fall_id, rechnungsnummer, datum, stundensatz, km_satz, mwst_satz, schreibgebuehr_satz),
         )
         rechnung_id = cur.lastrowid
         for i, bezeichnung in enumerate(STANDARD_ZEITPOSTEN):
@@ -232,6 +237,46 @@ def zeitposten_hinzufuegen(rechnung_id: int, bezeichnung: str, minuten: int = 0)
 def zeitposten_loeschen(posten_id: int):
     with get_conn() as conn:
         conn.execute("DELETE FROM rechnung_zeitposten WHERE id = ?", (posten_id,))
+        conn.commit()
+
+
+# ---------- Rechnung: freie Zusatzposten (Aufwendungen) ----------
+
+def aufwandsposten_fuer_rechnung(rechnung_id: int):
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM rechnung_aufwandsposten WHERE rechnung_id = ? ORDER BY reihenfolge ASC",
+            (rechnung_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def aufwandsposten_speichern(posten_id: int, bezeichnung: str, betrag: float):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE rechnung_aufwandsposten SET bezeichnung = ?, betrag = ? WHERE id = ?",
+            (bezeichnung, betrag, posten_id),
+        )
+        conn.commit()
+
+
+def aufwandsposten_hinzufuegen(rechnung_id: int, bezeichnung: str, betrag: float = 0):
+    with get_conn() as conn:
+        max_reihenfolge = conn.execute(
+            "SELECT COALESCE(MAX(reihenfolge), -1) FROM rechnung_aufwandsposten WHERE rechnung_id = ?",
+            (rechnung_id,),
+        ).fetchone()[0]
+        conn.execute(
+            """INSERT INTO rechnung_aufwandsposten (rechnung_id, bezeichnung, betrag, reihenfolge)
+               VALUES (?,?,?,?)""",
+            (rechnung_id, bezeichnung, betrag, max_reihenfolge + 1),
+        )
+        conn.commit()
+
+
+def aufwandsposten_loeschen(posten_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM rechnung_aufwandsposten WHERE id = ?", (posten_id,))
         conn.commit()
 
 

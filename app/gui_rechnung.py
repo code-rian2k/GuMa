@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 from app import repo
-from app.invoice import berechne_rechnung
+from app.invoice import berechne_rechnung, KOPIEN_GRENZE, KOPIEN_SATZ_BIS_GRENZE, KOPIEN_SATZ_AB_GRENZE
 from app.invoice_export import exportiere_rechnung_xlsx
 from app import design
 
@@ -27,6 +27,16 @@ class RechnungFenster(tk.Toplevel):
         design.icon_setzen(self, BASIS_ORDNER)
 
         self.zeitposten_zeilen = []  # Liste von dicts mit id, bezeichnung_var, minuten_var
+        self.zusatzposten_zeilen = []  # Liste von dicts mit id, bezeichnung_var, betrag_var
+
+        # Kopien-Staffelung kommt aus den Einstellungen (Datei → Stammdaten /
+        # Einstellungen), fällt ohne eigene Angabe auf die Werkseinstellung
+        # zurück - gilt für alle Rechnungen gleichermaßen, ist also keine
+        # Eigenschaft der einzelnen Rechnung.
+        einstellungen = repo.einstellungen_holen()
+        self.kopien_grenze = int(self._text_zu_zahl(einstellungen.get("kopien_grenze"), KOPIEN_GRENZE))
+        self.kopien_satz_bis_grenze = self._text_zu_zahl(einstellungen.get("kopien_satz_bis_grenze"), KOPIEN_SATZ_BIS_GRENZE)
+        self.kopien_satz_ab_grenze = self._text_zu_zahl(einstellungen.get("kopien_satz_ab_grenze"), KOPIEN_SATZ_AB_GRENZE)
 
         self._aufbauen()
         self._laden()
@@ -43,6 +53,15 @@ class RechnungFenster(tk.Toplevel):
         ttk.Button(button_leiste, text="Speichern", style="Accent.TButton", command=self._speichern).pack(side="left", padx=5)
         ttk.Button(button_leiste, text="Als Excel exportieren...", command=self._exportieren).pack(side="left", padx=5)
         ttk.Button(button_leiste, text="Schließen", command=self.destroy).pack(side="right", padx=5)
+
+        hinweis_leiste = ttk.Frame(self, padding=(10, 0))
+        hinweis_leiste.pack(side="bottom", fill="x")
+        ttk.Label(
+            hinweis_leiste,
+            text="Die Rechnung enthält personenbezogene Falldaten - beim Export keinen Cloud-Ordner\n"
+                 "(OneDrive, Dropbox, iCloud, Google Drive ...) als Speicherort wählen.",
+            justify="left", font=("TkDefaultFont", 8, "italic"),
+        ).pack(anchor="w", pady=(0, 5))
 
         # Der restliche Inhalt kommt in einen scrollbaren Bereich, damit bei
         # vielen Zeitpositionen oder kleineren Bildschirmen nichts abgeschnitten
@@ -140,9 +159,24 @@ class RechnungFenster(tk.Toplevel):
 
         ttk.Label(
             aufw_rahmen,
-            text="Kopien werden automatisch gestaffelt berechnet: erste 50 Seiten à 0,50 €, ab der 51. Seite à 0,15 €.",
+            text=(
+                f"Kopien werden automatisch gestaffelt berechnet: erste {self.kopien_grenze} Seiten "
+                f"à {self.kopien_satz_bis_grenze:.2f} €, ab Seite {self.kopien_grenze + 1} "
+                f"à {self.kopien_satz_ab_grenze:.2f} € (anpassbar in den Einstellungen)."
+            ),
             font=("TkDefaultFont", 8, "italic"),
-        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=(5, 0))
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=(5, 10))
+
+        ttk.Separator(aufw_rahmen, orient="horizontal").grid(row=5, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 8))
+
+        ttk.Label(aufw_rahmen, text="Weitere Positionen (frei benannt):").grid(
+            row=6, column=0, columnspan=2, sticky="w", padx=10
+        )
+        self.zusatzposten_frame = ttk.Frame(aufw_rahmen)
+        self.zusatzposten_frame.grid(row=7, column=0, columnspan=2, sticky="we", padx=10, pady=(3, 0))
+        ttk.Button(
+            aufw_rahmen, text="+ Position hinzufügen", command=self._zusatzposten_zeile_hinzufuegen
+        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=10, pady=5)
 
         # --- Ergebnis ---
         ergebnis_rahmen = ttk.LabelFrame(inhalt, text="Berechnung", padding=10)
@@ -176,6 +210,32 @@ class RechnungFenster(tk.Toplevel):
 
         self.zeitposten_zeilen.append(eintrag)
 
+    def _zusatzposten_zeile_hinzufuegen(self, bezeichnung="", betrag=0, posten_id=None):
+        zeile_frame = ttk.Frame(self.zusatzposten_frame)
+        zeile_frame.pack(fill="x", pady=1)
+
+        bez_var = tk.StringVar(value=bezeichnung)
+        betrag_var = tk.StringVar(value=str(betrag))
+
+        bez_entry = ttk.Entry(zeile_frame, textvariable=bez_var, width=50)
+        bez_entry.pack(side="left", padx=2)
+        betrag_entry = ttk.Entry(zeile_frame, textvariable=betrag_var, width=8)
+        betrag_entry.pack(side="left", padx=2)
+        ttk.Label(zeile_frame, text="€").pack(side="left")
+
+        betrag_var.trace_add("write", lambda *_: self._neu_berechnen())
+
+        eintrag = {"id": posten_id, "frame": zeile_frame, "bezeichnung": bez_var, "betrag": betrag_var}
+
+        def entfernen():
+            self.zusatzposten_zeilen.remove(eintrag)
+            zeile_frame.destroy()
+            self._neu_berechnen()
+
+        ttk.Button(zeile_frame, text="✕", width=3, command=entfernen).pack(side="left", padx=2)
+
+        self.zusatzposten_zeilen.append(eintrag)
+
     # ---------- Daten laden / speichern ----------
 
     def _laden(self):
@@ -197,9 +257,16 @@ class RechnungFenster(tk.Toplevel):
         for posten in repo.zeitposten_fuer_rechnung(self.rechnung_id):
             self._zeile_hinzufuegen(posten["bezeichnung"], posten["minuten"], posten["id"])
 
+        for posten in repo.aufwandsposten_fuer_rechnung(self.rechnung_id):
+            self._zusatzposten_zeile_hinzufuegen(posten["bezeichnung"], posten["betrag"], posten["id"])
+
     def _zahl(self, var, standard=0.0):
+        return self._text_zu_zahl(var.get(), standard)
+
+    @staticmethod
+    def _text_zu_zahl(text, standard=0.0):
         try:
-            text = var.get().strip().replace(",", ".")
+            text = (text or "").strip().replace(",", ".")
             return float(text) if text else standard
         except ValueError:
             return standard
@@ -208,6 +275,12 @@ class RechnungFenster(tk.Toplevel):
         return [
             {"bezeichnung": z["bezeichnung"].get(), "minuten": int(self._zahl(z["minuten"]))}
             for z in self.zeitposten_zeilen
+        ]
+
+    def _aktuelle_zusatzposten(self):
+        return [
+            {"bezeichnung": z["bezeichnung"].get(), "betrag": self._zahl(z["betrag"])}
+            for z in self.zusatzposten_zeilen
         ]
 
     def _neu_berechnen(self):
@@ -223,6 +296,10 @@ class RechnungFenster(tk.Toplevel):
                 schreibgebuehr_satz=self._zahl(self.schreibgebuehr_satz_var, 1.5),
                 kopien_seiten=int(self._zahl(self.kopien_var)),
                 mwst_satz=self._zahl(self.mwst_var, 19),
+                zusatzposten=self._aktuelle_zusatzposten(),
+                kopien_grenze=self.kopien_grenze,
+                kopien_satz_bis_grenze=self.kopien_satz_bis_grenze,
+                kopien_satz_ab_grenze=self.kopien_satz_ab_grenze,
             )
         except Exception:
             return
@@ -236,6 +313,7 @@ class RechnungFenster(tk.Toplevel):
             f"Telefon:          {ergebnis.telefon:>10.2f} €\n"
             f"Schreibgebühr:    {ergebnis.schreibgebuehr:>10.2f} € ({ergebnis.schreibgebuehr_einheiten} x angef. 1000 Zeichen)\n"
             f"Kopien:           {ergebnis.kopien_kosten:>10.2f} €\n"
+            f"Weitere Pos.:     {ergebnis.zusatzposten_summe:>10.2f} €\n"
             f"Summe 2 (Aufw.):  {ergebnis.summe_aufwendungen:>10.2f} €\n\n"
             f"Summe 1+2:        {ergebnis.zwischensumme:>10.2f} €\n"
             f"MwSt. {ergebnis.mwst_satz:.0f}%:        {ergebnis.mwst_betrag:>10.2f} €\n"
@@ -278,6 +356,19 @@ class RechnungFenster(tk.Toplevel):
         for entfernte_id in vorhandene_ids - aktuelle_ids:
             repo.zeitposten_loeschen(entfernte_id)
 
+        vorhandene_aufwand_ids = {z["id"] for z in repo.aufwandsposten_fuer_rechnung(self.rechnung_id)}
+        aktuelle_aufwand_ids = set()
+        for zeile in self.zusatzposten_zeilen:
+            bez = zeile["bezeichnung"].get()
+            betrag = self._zahl(zeile["betrag"])
+            if zeile["id"] is None:
+                repo.aufwandsposten_hinzufuegen(self.rechnung_id, bez, betrag)
+            else:
+                repo.aufwandsposten_speichern(zeile["id"], bez, betrag)
+                aktuelle_aufwand_ids.add(zeile["id"])
+        for entfernte_id in vorhandene_aufwand_ids - aktuelle_aufwand_ids:
+            repo.aufwandsposten_loeschen(entfernte_id)
+
         messagebox.showinfo("Gespeichert", "Rechnung wurde gespeichert.", parent=self)
 
     def _exportieren(self):
@@ -298,5 +389,6 @@ class RechnungFenster(tk.Toplevel):
         exportiere_rechnung_xlsx(
             pfad, self.fall, repo.rechnung_holen(self.rechnung_id),
             repo.zeitposten_fuer_rechnung(self.rechnung_id), einstellungen,
+            zusatzposten=repo.aufwandsposten_fuer_rechnung(self.rechnung_id),
         )
         messagebox.showinfo("Export", f"Rechnung wurde gespeichert unter:\n{pfad}", parent=self)

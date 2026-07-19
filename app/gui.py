@@ -28,6 +28,14 @@ def heute():
     return datetime.date.today().strftime("%d.%m.%Y")
 
 
+def _text_zu_zahl(text, standard=0.0):
+    try:
+        text = (text or "").strip().replace(",", ".")
+        return float(text) if text else standard
+    except ValueError:
+        return standard
+
+
 class Anwendung(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -710,7 +718,14 @@ class Anwendung(tk.Tk):
             messagebox.showwarning("Kein Fall", "Bitte zuerst einen Fall auswählen.")
             return
         nummer = self._naechste_rechnungsnummer()
-        rechnung_id = repo.rechnung_anlegen(self.aktueller_fall_id, nummer, heute())
+        einstellungen = repo.einstellungen_holen()
+        rechnung_id = repo.rechnung_anlegen(
+            self.aktueller_fall_id, nummer, heute(),
+            stundensatz=_text_zu_zahl(einstellungen.get("standard_stundensatz"), 100.0),
+            km_satz=_text_zu_zahl(einstellungen.get("standard_km_satz"), 0.42),
+            mwst_satz=_text_zu_zahl(einstellungen.get("standard_mwst_satz"), 19.0),
+            schreibgebuehr_satz=_text_zu_zahl(einstellungen.get("standard_schreibgebuehr_satz"), 1.5),
+        )
         self._rechnungen_laden()
         self._rechnung_fenster_oeffnen(rechnung_id)
 
@@ -923,6 +938,48 @@ class Anwendung(tk.Tk):
 
         for typ in repo.VORLAGEN_TYPEN:
             vorlagen_liste_neu_aufbauen(typ)
+
+        # --- Standard-Sätze für Rechnungen ---
+        saetze_rahmen = ttk.LabelFrame(inhalt, text="Standard-Sätze für Rechnungen", padding=10)
+        saetze_rahmen.grid(row=3, column=0, columnspan=2, sticky="we", padx=10, pady=(5, 10))
+
+        ttk.Label(
+            saetze_rahmen,
+            text="Vorbelegung für jede neue Rechnung - bleibt pro Rechnung wie gewohnt änderbar.",
+            justify="left",
+        ).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
+
+        saetze_labels = {
+            "standard_stundensatz": "Stundensatz (€)",
+            "standard_km_satz": "km-Satz (€/km)",
+            "standard_mwst_satz": "MwSt.-Satz (%)",
+            "standard_schreibgebuehr_satz": "Schreibgebühr (€ je 1000 Zeichen)",
+        }
+        for i, (schluessel, label) in enumerate(saetze_labels.items()):
+            row, col = divmod(i, 2)
+            ttk.Label(saetze_rahmen, text=label + ":").grid(row=row + 1, column=col * 2, sticky="e", padx=5, pady=4)
+            var = tk.StringVar(value=werte.get(schluessel, ""))
+            ttk.Entry(saetze_rahmen, textvariable=var, width=12).grid(row=row + 1, column=col * 2 + 1, sticky="w", pady=4, padx=(0, 15))
+            vars_[schluessel] = var
+
+        ttk.Separator(saetze_rahmen, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="we", pady=8)
+
+        ttk.Label(
+            saetze_rahmen,
+            text="Kopien-Staffelung: bis zur Grenze der erste Satz, ab der nächsten Seite der zweite Satz.",
+            justify="left",
+        ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(0, 8))
+
+        kopien_labels = {
+            "kopien_grenze": "Grenze (Seiten)",
+            "kopien_satz_bis_grenze": "Satz bis Grenze (€/Seite)",
+            "kopien_satz_ab_grenze": "Satz ab Grenze (€/Seite)",
+        }
+        for i, (schluessel, label) in enumerate(kopien_labels.items()):
+            ttk.Label(saetze_rahmen, text=label + ":").grid(row=5 + i, column=0, sticky="e", padx=5, pady=4)
+            var = tk.StringVar(value=werte.get(schluessel, ""))
+            ttk.Entry(saetze_rahmen, textvariable=var, width=12).grid(row=5 + i, column=1, sticky="w", pady=4, padx=(0, 15))
+            vars_[schluessel] = var
 
         def speichern():
             alter_ordner = dateien.ermittle_dokumente_ordner(BASIS_ORDNER, repo.einstellungen_holen())

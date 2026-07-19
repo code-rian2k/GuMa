@@ -147,6 +147,18 @@ class TestGuiDurchklick(unittest.TestCase):
         rechnungen = repo.rechnungen_fuer_fall(self.app.aktueller_fall_id)
         self.assertEqual(len(rechnungen), 1)
 
+    def test_rechnung_neu_nutzt_standard_saetze_aus_einstellungen(self):
+        from app import repo
+        repo.einstellung_setzen("standard_stundensatz", "150")
+        repo.einstellung_setzen("standard_mwst_satz", "7")
+
+        self.app._neuer_fall()
+        self.app._rechnung_neu()
+
+        rechnung = repo.rechnungen_fuer_fall(self.app.aktueller_fall_id)[0]
+        self.assertEqual(rechnung["stundensatz"], 150)
+        self.assertEqual(rechnung["mwst_satz"], 7)
+
     def test_fall_loeschen_entfernt_aus_liste(self):
         self.app._neuer_fall()
         fall_id = self.app.aktueller_fall_id
@@ -233,6 +245,37 @@ class TestGuiDurchklick(unittest.TestCase):
         fenster._speichern()
         posten = repo.zeitposten_fuer_rechnung(rechnung_id)
         self.assertEqual(int(posten[0]["minuten"]), 120)
+
+    def test_zusatzposten_hinzufuegen_speichern_und_berechnen(self):
+        self.app._neuer_fall()
+        self.app.stamm_vars["aktenzeichen"].set("10 F 10/26")
+        self.app._stammdaten_speichern()
+
+        from app import repo
+        rechnung_id = repo.rechnung_anlegen(self.app.aktueller_fall_id, "01-2026", "08.07.2026")
+
+        from app.gui_rechnung import RechnungFenster
+        fall = repo.fall_holen(self.app.aktueller_fall_id)
+        fenster = RechnungFenster(self.app, dict(fall), rechnung_id, self.app._fall_ordner())
+
+        fenster._zusatzposten_zeile_hinzufuegen()
+        fenster.zusatzposten_zeilen[0]["bezeichnung"].set("Fahrtkosten Bahn")
+        fenster.zusatzposten_zeilen[0]["betrag"].set("45")
+        fenster._neu_berechnen()
+        self.assertEqual(fenster._letztes_ergebnis.zusatzposten_summe, 45.0)
+
+        fenster._speichern()
+        posten = repo.aufwandsposten_fuer_rechnung(rechnung_id)
+        self.assertEqual(len(posten), 1)
+        self.assertEqual(posten[0]["bezeichnung"], "Fahrtkosten Bahn")
+        self.assertEqual(posten[0]["betrag"], 45.0)
+
+        # Entfernen der Zeile (wie über die "x"-Schaltfläche) funktioniert ebenfalls
+        eintrag = fenster.zusatzposten_zeilen[0]
+        fenster.zusatzposten_zeilen.remove(eintrag)
+        eintrag["frame"].destroy()
+        fenster._speichern()
+        self.assertEqual(repo.aufwandsposten_fuer_rechnung(rechnung_id), [])
 
     def test_rechnung_excel_export_ueber_gui(self):
         self.app._neuer_fall()

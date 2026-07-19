@@ -72,6 +72,15 @@ CREATE TABLE IF NOT EXISTS rechnung_zeitposten (
     FOREIGN KEY (rechnung_id) REFERENCES rechnungen(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS rechnung_aufwandsposten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rechnung_id INTEGER NOT NULL,
+    bezeichnung TEXT,
+    betrag REAL DEFAULT 0,
+    reihenfolge INTEGER DEFAULT 0,
+    FOREIGN KEY (rechnung_id) REFERENCES rechnungen(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS einstellungen (
     schluessel TEXT PRIMARY KEY,
     wert TEXT
@@ -108,6 +117,15 @@ STANDARD_EINSTELLUNGEN = {
     "telefon": "",
     "absender_adresse": "",
     "dokumente_ordner": "",  # leer = Standardordner neben dem Programm
+    # Vorbelegung für neue Rechnungen (bleibt pro Rechnung änderbar wie bisher)
+    "standard_stundensatz": "100",
+    "standard_km_satz": "0.42",
+    "standard_mwst_satz": "19",
+    "standard_schreibgebuehr_satz": "1.5",
+    # Kopien-Staffelung: bis zur Grenze der erste Satz, danach der zweite
+    "kopien_grenze": "50",
+    "kopien_satz_bis_grenze": "0.50",
+    "kopien_satz_ab_grenze": "0.15",
 }
 
 

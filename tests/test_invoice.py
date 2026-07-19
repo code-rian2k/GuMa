@@ -62,6 +62,41 @@ class TestRechnungsberechnung(unittest.TestCase):
         )
         self.assertEqual(ergebnis.stunden_aufgerundet, 1)
 
+    def test_zusatzposten_fliessen_in_summe_aufwendungen_ein(self):
+        ergebnis = berechne_rechnung(
+            zeitposten=[], stundensatz=100, km=0, km_satz=0.42, porto=0,
+            telefon=0, zeichen_anzahl=0, schreibgebuehr_satz=1.5,
+            kopien_seiten=0, mwst_satz=19,
+            zusatzposten=[{"bezeichnung": "Fahrtkosten Bahn", "betrag": 45}, {"bezeichnung": "Parkgebühr", "betrag": 5.5}],
+        )
+        self.assertEqual(ergebnis.zusatzposten_summe, 50.5)
+        self.assertEqual(ergebnis.summe_aufwendungen, 50.5)
+        self.assertEqual(ergebnis.zwischensumme, 50.5)
+
+    def test_zusatzposten_ohne_betrag_zaehlt_als_null(self):
+        ergebnis = berechne_rechnung(
+            zeitposten=[], stundensatz=100, km=0, km_satz=0.42, porto=0,
+            telefon=0, zeichen_anzahl=0, schreibgebuehr_satz=1.5,
+            kopien_seiten=0, mwst_satz=19,
+            zusatzposten=[{"bezeichnung": "Noch ohne Betrag"}],
+        )
+        self.assertEqual(ergebnis.zusatzposten_summe, 0.0)
+
+    def test_kopien_staffel_ist_anpassbar(self):
+        # Eigene Staffelung statt Werkseinstellung: Grenze 10 Seiten,
+        # 1,00 €/Seite bis Grenze, 0,20 €/Seite danach
+        kosten = berechne_kopien_kosten(20, grenze=10, satz_bis_grenze=1.0, satz_ab_grenze=0.20)
+        self.assertEqual(kosten, 10 * 1.0 + 10 * 0.20)
+
+    def test_berechne_rechnung_nutzt_eigene_kopien_staffel(self):
+        ergebnis = berechne_rechnung(
+            zeitposten=[], stundensatz=100, km=0, km_satz=0.42, porto=0,
+            telefon=0, zeichen_anzahl=0, schreibgebuehr_satz=1.5,
+            kopien_seiten=20, mwst_satz=19,
+            kopien_grenze=10, kopien_satz_bis_grenze=1.0, kopien_satz_ab_grenze=0.20,
+        )
+        self.assertEqual(ergebnis.kopien_kosten, 12.0)
+
 
 if __name__ == "__main__":
     unittest.main()
