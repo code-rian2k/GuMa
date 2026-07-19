@@ -154,5 +154,5 @@ versioniert).
 Rechte vorbehalten - siehe [LICENSE](LICENSE). Diese Software ist keine
 Open-Source-Software; der Quellcode liegt hier ausschließlich zur
 Transparenz und Nachvollziehbarkeit offen. Nutzung, Veränderung oder
-Weitergabe nur mit vorheriger Rücksprache und ausdrücklicher Zustimmung der
-Urheber.
+Weitergabe nur mit vorheriger Rücksprache und ausdrücklicher Zustimmung des
+Urhebers.

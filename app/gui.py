@@ -156,7 +156,7 @@ class Anwendung(tk.Tk):
             text=f"© {datetime.date.today().year} {design.AUTOR_KUERZEL}. Alle Rechte vorbehalten.\n"
                  "Diese Software ist keine Open-Source-Software. Nutzung,\n"
                  "Veränderung oder Weitergabe nur nach Rücksprache und mit\n"
-                 "ausdrücklicher Zustimmung der Urheber.",
+                 "ausdrücklicher Zustimmung des Urhebers.",
             justify="left", font=("TkDefaultFont", 8),
         ).pack(anchor="w", pady=(0, 8))
 
