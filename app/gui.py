@@ -122,9 +122,77 @@ class Anwendung(tk.Tk):
         datei_menu.add_command(label="Beenden", command=self._beenden)
         menu.add_cascade(label="Datei", menu=datei_menu)
 
+        fristen_menu = tk.Menu(menu, tearoff=0)
+        fristen_menu.add_command(label="Alle Fristen anzeigen...", command=self._fristen_uebersicht_oeffnen)
+        menu.add_cascade(label="Fristen", menu=fristen_menu)
+
         info_menu = tk.Menu(menu, tearoff=0)
         info_menu.add_command(label="Über GuMa...", command=self._info_oeffnen)
         menu.add_cascade(label="Info", menu=info_menu)
+
+    def _springe_zu_fall(self, fall_id):
+        """Wählt den angegebenen Fall in der Fallliste aus und wechselt zum
+        Tab "Fristen & Termine" - z.B. beim Doppelklick in der
+        Fristen-Gesamtübersicht."""
+        # Ein aktiver Suchfilter könnte den Fall aus der Liste ausblenden.
+        self.suche_var.set("")
+        self._faelle_neu_laden()
+        if str(fall_id) in self.fall_baum.get_children():
+            self.fall_baum.selection_set(str(fall_id))
+            self.fall_baum.focus(str(fall_id))
+            self._fall_ausgewaehlt()
+            self.notebook.select(1)  # Tab "Fristen & Termine"
+
+    def _fristen_uebersicht_oeffnen(self):
+        fenster = tk.Toplevel(self)
+        fenster.title("Alle Fristen & Termine")
+        fenster.geometry("700x450")
+        fenster.configure(bg=design.FARBE_HINTERGRUND)
+        design.icon_setzen(fenster, BASIS_ORDNER)
+
+        ttk.Label(
+            fenster,
+            text="Offene Fristen & Termine über alle Fälle, chronologisch sortiert:",
+            padding=10,
+        ).pack(anchor="w")
+
+        baum = ttk.Treeview(fenster, columns=("datum", "fall", "beschreibung"), show="headings")
+        baum.heading("datum", text="Datum")
+        baum.heading("fall", text="Fall")
+        baum.heading("beschreibung", text="Beschreibung")
+        baum.column("datum", width=100)
+        baum.column("fall", width=220)
+        baum.column("beschreibung", width=340)
+        baum.pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+        termin_fall_ids = {}
+        for termin in repo.alle_offenen_termine():
+            fall_bezeichnung = termin.get("aktenzeichen") or termin.get("in_sachen") or f"Fall {termin['fall_id']}"
+            baum.insert(
+                "", "end", iid=str(termin["id"]),
+                values=(termin["datum"], fall_bezeichnung, termin["beschreibung"]),
+            )
+            termin_fall_ids[str(termin["id"])] = termin["fall_id"]
+
+        def zum_fall_springen(_event=None):
+            auswahl = baum.selection()
+            if not auswahl:
+                return
+            fall_id = termin_fall_ids.get(auswahl[0])
+            if fall_id is None:
+                return
+            fenster.destroy()
+            self._springe_zu_fall(fall_id)
+
+        baum.bind("<Double-1>", zum_fall_springen)
+
+        ttk.Label(
+            fenster,
+            text="(Doppelklick öffnet den zugehörigen Fall im Tab \"Fristen & Termine\")",
+            font=("TkDefaultFont", 8, "italic"),
+        ).pack(anchor="w", padx=10, pady=(0, 10))
+
+        ttk.Button(fenster, text="Schließen", command=fenster.destroy).pack(anchor="e", padx=10, pady=(0, 10))
 
     def _info_oeffnen(self):
         fenster = tk.Toplevel(self)
@@ -203,6 +271,16 @@ class Anwendung(tk.Tk):
         self.suche_var.trace_add("write", lambda *_: self._faelle_neu_laden())
         ttk.Entry(suchleiste, textvariable=self.suche_var).pack(side="left", fill="x", expand=True)
 
+        filter_zeile = ttk.Frame(links)
+        filter_zeile.pack(fill="x", pady=(0, 5))
+        ttk.Label(filter_zeile, text="Status:").pack(side="left")
+        self.status_filter_var = tk.StringVar(value="Alle")
+        ttk.Combobox(
+            filter_zeile, textvariable=self.status_filter_var,
+            values=["Alle"] + repo.STATUS_OPTIONEN, width=22, state="readonly",
+        ).pack(side="left", padx=5)
+        self.status_filter_var.trace_add("write", lambda *_: self._faelle_neu_laden())
+
         ttk.Button(links, text="+ Neuer Fall anlegen", style="Accent.TButton", command=self._neuer_fall).pack(fill="x", pady=(0, 5))
 
         spalten = ("aktenzeichen", "in_sachen", "status")
@@ -238,7 +316,9 @@ class Anwendung(tk.Tk):
     def _faelle_neu_laden(self):
         for zeile in self.fall_baum.get_children():
             self.fall_baum.delete(zeile)
-        for fall in repo.faelle_liste(self.suche_var.get()):
+        status_filter = self.status_filter_var.get()
+        status_filter = None if status_filter in ("", "Alle") else status_filter
+        for fall in repo.faelle_liste(self.suche_var.get(), status_filter):
             self.fall_baum.insert("", "end", iid=str(fall["id"]),
                                    values=(fall["aktenzeichen"], fall["in_sachen"], fall["status"]),
                                    tags=(fall["status"],))
