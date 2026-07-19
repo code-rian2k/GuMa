@@ -73,10 +73,15 @@ gutachten_manager/
   einen dieser Platzhalter unverändert, weist GuMa beim Erstellen darauf hin.
   Beim Hochladen wird die Vorlage automatisch von Resten der Word-
   Änderungsverfolgung sowie Autor-Metadaten bereinigt (siehe Hinweis unten).
-- **Rechnungen**: Zeitaufwand (Minuten je Position, automatische Rundung auf
-  volle Stunden), Reisekosten, Porto, Telefon, Schreibgebühr (automatisch aus
-  Zeichenzahl), Kopierkosten (automatisch gestaffelt: erste 50 Seiten 0,50 €,
-  danach 0,15 €/Seite), 19 % MwSt., Export als Excel-Datei
+- **Rechnungen**: Zeitaufwand (beliebig viele frei benannte Minuten-Posten,
+  automatische Rundung auf volle Stunden), Reisekosten, Porto, Telefon,
+  Schreibgebühr (automatisch aus Zeichenzahl), Kopierkosten (automatisch
+  gestaffelt), MwSt., Export als Excel-Datei. Zusätzlich beliebig viele frei
+  benannte Zusatzposten (Bezeichnung + Betrag, z. B. "Fahrtkosten Bahn")
+  möglich. Stundensatz, km-Satz, MwSt.-Satz, Schreibgebühr sowie die
+  Kopien-Staffelung (Grenze und beide Sätze) sind über Datei-Menü →
+  Einstellungen als Vorbelegung für neue Rechnungen hinterlegbar und bleiben
+  pro Rechnung wie gewohnt änderbar.
 - **Unterlagen**: beliebige Dateien (PDF, Fotos, Scans, ...) zu einem Fall
   hinzufügen - werden in den Fall-Ordner kopiert, dort öffnen/löschen, oder
   den kompletten Fall als ZIP-Datei exportieren (z. B. für den Versand)

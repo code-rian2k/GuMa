@@ -7,13 +7,27 @@ from openpyxl.styles import Font
 from app.invoice import berechne_rechnung, KOPIEN_GRENZE, KOPIEN_SATZ_BIS_GRENZE, KOPIEN_SATZ_AB_GRENZE
 
 
+def _einstellung_zahl(einstellungen: dict, schluessel: str, standard: float) -> float:
+    try:
+        wert = (einstellungen.get(schluessel) or "").strip().replace(",", ".")
+        return float(wert) if wert else standard
+    except (ValueError, AttributeError):
+        return standard
+
+
 def exportiere_rechnung_xlsx(
     pfad: str,
     fall: dict,
     rechnung: dict,
     zeitposten: list,
     einstellungen: dict,
+    zusatzposten: list = None,
 ):
+    zusatzposten = zusatzposten or []
+    kopien_grenze = int(_einstellung_zahl(einstellungen, "kopien_grenze", KOPIEN_GRENZE))
+    kopien_satz_bis_grenze = _einstellung_zahl(einstellungen, "kopien_satz_bis_grenze", KOPIEN_SATZ_BIS_GRENZE)
+    kopien_satz_ab_grenze = _einstellung_zahl(einstellungen, "kopien_satz_ab_grenze", KOPIEN_SATZ_AB_GRENZE)
+
     ergebnis = berechne_rechnung(
         zeitposten=zeitposten,
         stundensatz=rechnung["stundensatz"],
@@ -25,6 +39,10 @@ def exportiere_rechnung_xlsx(
         schreibgebuehr_satz=rechnung["schreibgebuehr_satz"],
         kopien_seiten=rechnung["kopien_seiten"],
         mwst_satz=rechnung["mwst_satz"],
+        zusatzposten=zusatzposten,
+        kopien_grenze=kopien_grenze,
+        kopien_satz_bis_grenze=kopien_satz_bis_grenze,
+        kopien_satz_ab_grenze=kopien_satz_ab_grenze,
     )
 
     wb = openpyxl.Workbook()
@@ -91,21 +109,25 @@ def exportiere_rechnung_xlsx(
     ws.cell(row=row, column=6, value=ergebnis.schreibgebuehr)
     row += 1
     seiten = rechnung["kopien_seiten"] or 0
-    seiten_bis = min(seiten, KOPIEN_GRENZE)
-    seiten_ueber = max(0, seiten - KOPIEN_GRENZE)
+    seiten_bis = min(seiten, kopien_grenze)
+    seiten_ueber = max(0, seiten - kopien_grenze)
     ws.cell(row=row, column=1, value="Kopien GA")
     ws.cell(row=row, column=2, value="Seiten")
     ws.cell(row=row, column=3, value=seiten_bis)
     ws.cell(row=row, column=4, value="à")
-    ws.cell(row=row, column=5, value=KOPIEN_SATZ_BIS_GRENZE)
-    ws.cell(row=row, column=6, value=round(seiten_bis * KOPIEN_SATZ_BIS_GRENZE, 2))
+    ws.cell(row=row, column=5, value=kopien_satz_bis_grenze)
+    ws.cell(row=row, column=6, value=round(seiten_bis * kopien_satz_bis_grenze, 2))
     row += 1
     if seiten_ueber > 0:
         ws.cell(row=row, column=2, value="Seiten")
         ws.cell(row=row, column=3, value=seiten_ueber)
         ws.cell(row=row, column=4, value="à")
-        ws.cell(row=row, column=5, value=KOPIEN_SATZ_AB_GRENZE)
-        ws.cell(row=row, column=6, value=round(seiten_ueber * KOPIEN_SATZ_AB_GRENZE, 2))
+        ws.cell(row=row, column=5, value=kopien_satz_ab_grenze)
+        ws.cell(row=row, column=6, value=round(seiten_ueber * kopien_satz_ab_grenze, 2))
+        row += 1
+    for posten in zusatzposten:
+        ws.cell(row=row, column=1, value=posten.get("bezeichnung", ""))
+        ws.cell(row=row, column=6, value=round(float(posten.get("betrag", 0) or 0), 2))
         row += 1
     aufw_ende = row - 1
     row += 1

@@ -8,13 +8,15 @@ Rechnungslogik - bildet exakt die bisherige Excel-Berechnung nach:
    - Porto (freier Betrag)
    - Telefon (freier Betrag)
    - Schreibgebühr: je angefangene 1000 Zeichen x Satz (aufgerundet)
-   - Kopien: gestaffelt - erste 50 Seiten x 0,50 €, jede weitere Seite x 0,15 €
+   - Kopien: gestaffelt - Grenze/Sätze in den Einstellungen anpassbar
+     (Werkseinstellung: erste 50 Seiten x 0,50 €, jede weitere Seite x 0,15 €)
+   - Weitere Positionen: beliebig viele frei benannte Zusatzposten mit Betrag
 3. Summe 1 (Zeitaufwand) + Summe 2 (Aufwendungen) = Zwischensumme
 4. MwSt auf Zwischensumme
 5. Gesamtsumme
 """
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 KOPIEN_GRENZE = 50
@@ -36,6 +38,7 @@ class RechnungsErgebnis:
     schreibgebuehr: float
     schreibgebuehr_einheiten: int
     kopien_kosten: float
+    zusatzposten_summe: float
     summe_aufwendungen: float
 
     zwischensumme: float
@@ -44,14 +47,18 @@ class RechnungsErgebnis:
     gesamtsumme: float
 
 
-def berechne_kopien_kosten(seiten: int) -> float:
+def berechne_kopien_kosten(
+    seiten: int,
+    grenze: int = KOPIEN_GRENZE,
+    satz_bis_grenze: float = KOPIEN_SATZ_BIS_GRENZE,
+    satz_ab_grenze: float = KOPIEN_SATZ_AB_GRENZE,
+) -> float:
     if seiten <= 0:
         return 0.0
-    if seiten <= KOPIEN_GRENZE:
-        return round(seiten * KOPIEN_SATZ_BIS_GRENZE, 2)
+    if seiten <= grenze:
+        return round(seiten * satz_bis_grenze, 2)
     return round(
-        KOPIEN_GRENZE * KOPIEN_SATZ_BIS_GRENZE
-        + (seiten - KOPIEN_GRENZE) * KOPIEN_SATZ_AB_GRENZE,
+        grenze * satz_bis_grenze + (seiten - grenze) * satz_ab_grenze,
         2,
     )
 
@@ -75,6 +82,10 @@ def berechne_rechnung(
     schreibgebuehr_satz: float,
     kopien_seiten: int,
     mwst_satz: float,
+    zusatzposten: list = None,   # Liste von dicts mit "betrag" - frei benannte Zusatzposten
+    kopien_grenze: int = KOPIEN_GRENZE,
+    kopien_satz_bis_grenze: float = KOPIEN_SATZ_BIS_GRENZE,
+    kopien_satz_ab_grenze: float = KOPIEN_SATZ_AB_GRENZE,
 ) -> RechnungsErgebnis:
     minuten_gesamt = sum(int(p.get("minuten", 0) or 0) for p in zeitposten)
     stunden_exakt = minuten_gesamt / 60
@@ -85,10 +96,13 @@ def berechne_rechnung(
     schreibgebuehr_einheiten, schreibgebuehr = berechne_schreibgebuehr(
         zeichen_anzahl or 0, schreibgebuehr_satz or 0
     )
-    kopien_kosten = berechne_kopien_kosten(kopien_seiten or 0)
+    kopien_kosten = berechne_kopien_kosten(
+        kopien_seiten or 0, kopien_grenze, kopien_satz_bis_grenze, kopien_satz_ab_grenze
+    )
+    zusatzposten_summe = round(sum(float(p.get("betrag", 0) or 0) for p in (zusatzposten or [])), 2)
 
     summe_aufwendungen = round(
-        reisekosten + (porto or 0) + (telefon or 0) + schreibgebuehr + kopien_kosten, 2
+        reisekosten + (porto or 0) + (telefon or 0) + schreibgebuehr + kopien_kosten + zusatzposten_summe, 2
     )
 
     zwischensumme = round(summe_zeitaufwand + summe_aufwendungen, 2)
@@ -107,6 +121,7 @@ def berechne_rechnung(
         schreibgebuehr=schreibgebuehr,
         schreibgebuehr_einheiten=schreibgebuehr_einheiten,
         kopien_kosten=kopien_kosten,
+        zusatzposten_summe=zusatzposten_summe,
         summe_aufwendungen=summe_aufwendungen,
         zwischensumme=zwischensumme,
         mwst_satz=mwst_satz,
