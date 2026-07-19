@@ -2,6 +2,7 @@
 Hauptfenster von GuMa (Gutachten-Manager).
 """
 import os
+import re
 import datetime
 import webbrowser
 import tkinter as tk
@@ -55,6 +56,7 @@ class Anwendung(tk.Tk):
         self.minsize(1000, 620)
         self._maximiert_starten()
         self.aktueller_fall_id = None
+        self._stammdaten_dirty = False
 
         design.style_anwenden(self)
         design.icon_setzen(self, BASIS_ORDNER)
@@ -66,6 +68,7 @@ class Anwendung(tk.Tk):
         self._menu_aufbauen()
         self._layout_aufbauen()
         self._faelle_neu_laden()
+        self.protocol("WM_DELETE_WINDOW", self._beenden)
 
     def _dokumente_ordner_neu_einlesen(self):
         """Liest den aktuell konfigurierten Speicherort aus den Einstellungen
@@ -116,7 +119,7 @@ class Anwendung(tk.Tk):
         datei_menu.add_separator()
         datei_menu.add_command(label="Alle Daten sichern (Backup)...", command=self._backup_erstellen)
         datei_menu.add_separator()
-        datei_menu.add_command(label="Beenden", command=self.destroy)
+        datei_menu.add_command(label="Beenden", command=self._beenden)
         menu.add_cascade(label="Datei", menu=datei_menu)
 
         info_menu = tk.Menu(menu, tearoff=0)
@@ -178,6 +181,11 @@ class Anwendung(tk.Tk):
             f"Alle Fälle, Dokumente und Unterlagen wurden gesichert unter:\n{backup_ordner}",
         )
 
+    def _beenden(self):
+        if not self._ungespeicherte_aenderungen_bestaetigen():
+            return
+        self.destroy()
+
     # ---------- Grundlayout ----------
 
     def _layout_aufbauen(self):
@@ -237,11 +245,34 @@ class Anwendung(tk.Tk):
 
     def _fall_ausgewaehlt(self, _event=None):
         auswahl = self.fall_baum.selection()
-        if not auswahl:
-            self.aktueller_fall_id = None
+        neue_id = int(auswahl[0]) if auswahl else None
+        if neue_id == self.aktueller_fall_id:
             return
-        self.aktueller_fall_id = int(auswahl[0])
+        if self._stammdaten_dirty and not self._ungespeicherte_aenderungen_bestaetigen():
+            # Wechsel abbrechen: Auswahl in der Liste auf den bisherigen Fall
+            # zurücksetzen, die (noch ungespeicherten) Falldaten bleiben unverändert.
+            if self.aktueller_fall_id and str(self.aktueller_fall_id) in self.fall_baum.get_children():
+                self.fall_baum.selection_set(str(self.aktueller_fall_id))
+            else:
+                self.fall_baum.selection_remove(*self.fall_baum.selection())
+            return
+        self.aktueller_fall_id = neue_id
         self._fall_in_tabs_laden()
+
+    def _ungespeicherte_aenderungen_bestaetigen(self) -> bool:
+        """Fragt nach, falls es nicht gespeicherte Änderungen bei den Falldaten
+        gibt. Gibt True zurück, wenn fortgefahren werden darf (keine
+        Änderungen oder Nutzer bestätigt das Verwerfen), sonst False."""
+        if not self._stammdaten_dirty:
+            return True
+        return messagebox.askyesno(
+            "Ungespeicherte Änderungen",
+            "Es gibt ungespeicherte Änderungen bei den Falldaten.\n\n"
+            "Ohne Speichern fortfahren und Änderungen verwerfen?",
+        )
+
+    def _stammdaten_dirty_setzen(self, *_args):
+        self._stammdaten_dirty = True
 
     def _neuer_fall(self):
         neue_id = repo.fall_anlegen({"status": "offen"})
@@ -344,6 +375,17 @@ class Anwendung(tk.Tk):
 
         ttk.Button(tab, text="Speichern", style="Accent.TButton", command=self._stammdaten_speichern).pack(anchor="w", pady=10)
 
+        # Änderungen an den Falldaten nachverfolgen, damit beim Fallwechsel
+        # oder Beenden ohne vorheriges Speichern gewarnt werden kann.
+        for var in self.stamm_vars.values():
+            var.trace_add("write", self._stammdaten_dirty_setzen)
+        self.status_var.trace_add("write", self._stammdaten_dirty_setzen)
+        self.auftragstext_text.bind("<<Modified>>", self._auftragstext_geaendert)
+
+    def _auftragstext_geaendert(self, _event=None):
+        if self.auftragstext_text.edit_modified():
+            self._stammdaten_dirty_setzen()
+
     def _stammdaten_laden(self):
         fall = repo.fall_holen(self.aktueller_fall_id) if self.aktueller_fall_id else None
         for schluessel, var in self.stamm_vars.items():
@@ -352,6 +394,10 @@ class Anwendung(tk.Tk):
         self.auftragstext_text.delete("1.0", "end")
         if fall and fall.get("auftragstext"):
             self.auftragstext_text.insert("1.0", fall["auftragstext"])
+        # Das Befüllen der Felder oben löst über die Trace-Bindungen selbst
+        # ein "dirty" aus - deshalb hier am Ende wieder zurücksetzen.
+        self.auftragstext_text.edit_modified(False)
+        self._stammdaten_dirty = False
 
     def _stammdaten_speichern(self):
         if not self.aktueller_fall_id:
@@ -361,6 +407,7 @@ class Anwendung(tk.Tk):
         daten["status"] = self.status_var.get()
         daten["auftragstext"] = self.auftragstext_text.get("1.0", "end").strip()
         repo.fall_aktualisieren(self.aktueller_fall_id, daten)
+        self._stammdaten_dirty = False
         self._faelle_neu_laden()
         if str(self.aktueller_fall_id) in self.fall_baum.get_children():
             self.fall_baum.selection_set(str(self.aktueller_fall_id))
@@ -736,7 +783,18 @@ class Anwendung(tk.Tk):
     def _naechste_rechnungsnummer(self):
         jahr = datetime.date.today().year
         bestehende = repo.rechnungen_fuer_fall(self.aktueller_fall_id) if self.aktueller_fall_id else []
-        return f"{len(bestehende) + 1:02d}-{jahr}"
+        # Auf der höchsten bereits vergebenen Nummer aufbauen statt auf der
+        # Anzahl bestehender Rechnungen - sonst könnte nach dem Löschen einer
+        # Rechnung eine bereits vergebene Nummer erneut vorgeschlagen werden
+        # (z.B. 01,02,03 vorhanden, 02 gelöscht -> Anzahl 2 -> "03" erneut
+        # vorgeschlagen, obwohl "03" schon existiert).
+        muster = re.compile(rf"^(\d+)-{jahr}$")
+        hoechste = 0
+        for rechnung in bestehende:
+            treffer = muster.match(rechnung.get("rechnungsnummer") or "")
+            if treffer:
+                hoechste = max(hoechste, int(treffer.group(1)))
+        return f"{hoechste + 1:02d}-{jahr}"
 
     def _rechnung_neu(self):
         if not self.aktueller_fall_id:
