@@ -94,6 +94,30 @@ class TestRepository(unittest.TestCase):
         werte = repo.einstellungen_holen()
         self.assertEqual(werte["iban"], "DE00 1234 5678 9000 0000 00")
 
+    def test_termine_werden_chronologisch_sortiert(self):
+        """Reine Textsortierung würde hier scheitern: "05.01.2026" käme
+        alphabetisch vor "20.12.2025", obwohl Dezember 2025 früher liegt."""
+        fall_id = repo.fall_anlegen({"aktenzeichen": "1 F 1/26"})
+        repo.termin_anlegen(fall_id, "05.01.2026", "Später Termin")
+        repo.termin_anlegen(fall_id, "20.12.2025", "Früherer Termin")
+        repo.termin_anlegen(fall_id, "15.06.2026", "Spätester Termin")
+
+        termine = repo.termine_liste(fall_id)
+
+        self.assertEqual(
+            [t["beschreibung"] for t in termine],
+            ["Früherer Termin", "Später Termin", "Spätester Termin"],
+        )
+
+    def test_termine_mit_ungueltigem_datum_landen_am_ende(self):
+        fall_id = repo.fall_anlegen({"aktenzeichen": "1 F 1/26"})
+        repo.termin_anlegen(fall_id, "kein Datum", "Unklarer Termin")
+        repo.termin_anlegen(fall_id, "01.01.2026", "Klarer Termin")
+
+        termine = repo.termine_liste(fall_id)
+
+        self.assertEqual([t["beschreibung"] for t in termine], ["Klarer Termin", "Unklarer Termin"])
+
 
 if __name__ == "__main__":
     unittest.main()

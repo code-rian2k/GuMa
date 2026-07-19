@@ -2,6 +2,8 @@
 Einfache Datenzugriffsfunktionen (Repository) - kapselt alle SQL-Zugriffe,
 damit die GUI nicht direkt mit SQL arbeiten muss.
 """
+from datetime import datetime
+
 from app.db import get_conn, now_str, STANDARD_ZEITPOSTEN
 
 STATUS_OPTIONEN = [
@@ -100,12 +102,26 @@ def termin_anlegen(fall_id: int, datum: str, beschreibung: str):
         conn.commit()
 
 
+def _termin_sortierschluessel(datum: str):
+    """Datum ist als Text im Format TT.MM.JJJJ gespeichert - eine reine
+    Text-Sortierung ("ORDER BY datum") ergibt KEINE chronologische
+    Reihenfolge (z.B. "05.01.2026" käme textuell vor "20.12.2025", obwohl
+    Dezember 2025 früher liegt). Deshalb wird hier auf ein echtes Datum
+    geparst; nicht auswertbare/leere Werte landen ans Ende der Liste."""
+    try:
+        return datetime.strptime(datum or "", "%d.%m.%Y")
+    except ValueError:
+        return datetime.max
+
+
 def termine_liste(fall_id: int):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM termine WHERE fall_id = ? ORDER BY datum ASC", (fall_id,)
+            "SELECT * FROM termine WHERE fall_id = ?", (fall_id,)
         ).fetchall()
-        return [dict(r) for r in rows]
+        eintraege = [dict(r) for r in rows]
+        eintraege.sort(key=lambda t: _termin_sortierschluessel(t["datum"]))
+        return eintraege
 
 
 def termin_erledigt_setzen(termin_id: int, erledigt: bool):

@@ -106,6 +106,51 @@ class TestGuiDurchklick(unittest.TestCase):
         from tkinter import messagebox
         self.assertTrue(len(messagebox._calls["showwarning"]) >= 1)
 
+    def test_fallwechsel_mit_ungespeicherten_aenderungen_fragt_nach(self):
+        from tkinter import messagebox
+
+        self.app._neuer_fall()
+        erster_fall_id = self.app.aktueller_fall_id
+        self.app.stamm_vars["aktenzeichen"].set("1 F 1/26")
+        self.app._stammdaten_speichern()
+
+        self.app._neuer_fall()
+        zweiter_fall_id = self.app.aktueller_fall_id
+        self.assertNotEqual(erster_fall_id, zweiter_fall_id)
+
+        # Ungespeicherte Änderung am zweiten Fall vornehmen
+        self.app.stamm_vars["aktenzeichen"].set("2 F 2/26 (nicht gespeichert)")
+        self.assertTrue(self.app._stammdaten_dirty)
+
+        # "Nein" auf die Rückfrage -> Wechsel wird verhindert, Auswahl bleibt beim zweiten Fall
+        messagebox._antwort_ja_nein["value"] = False
+        self.app.fall_baum.selection_set(str(erster_fall_id))
+        self.app._fall_ausgewaehlt()
+        self.assertEqual(self.app.aktueller_fall_id, zweiter_fall_id)
+        self.assertTrue(self.app._stammdaten_dirty)
+
+        # "Ja" auf die Rückfrage -> Wechsel klappt, Änderungen werden verworfen
+        messagebox._antwort_ja_nein["value"] = True
+        self.app.fall_baum.selection_set(str(erster_fall_id))
+        self.app._fall_ausgewaehlt()
+        self.assertEqual(self.app.aktueller_fall_id, erster_fall_id)
+        self.assertFalse(self.app._stammdaten_dirty)
+
+    def test_fallwechsel_ohne_aenderungen_fragt_nicht_nach(self):
+        from tkinter import messagebox
+
+        self.app._neuer_fall()
+        erster_fall_id = self.app.aktueller_fall_id
+        self.app._neuer_fall()
+        zweiter_fall_id = self.app.aktueller_fall_id
+
+        anzahl_vorher = len(messagebox._calls["askyesno"])
+        self.app.fall_baum.selection_set(str(erster_fall_id))
+        self.app._fall_ausgewaehlt()
+
+        self.assertEqual(self.app.aktueller_fall_id, erster_fall_id)
+        self.assertEqual(len(messagebox._calls["askyesno"]), anzahl_vorher)
+
     def test_notiz_hinzufuegen(self):
         self.app._neuer_fall()
         self.app.neue_notiz_text.insert("1.0", "Testnotiz für den Fall")
@@ -158,6 +203,25 @@ class TestGuiDurchklick(unittest.TestCase):
         rechnung = repo.rechnungen_fuer_fall(self.app.aktueller_fall_id)[0]
         self.assertEqual(rechnung["stundensatz"], 150)
         self.assertEqual(rechnung["mwst_satz"], 7)
+
+    def test_naechste_rechnungsnummer_vermeidet_kollision_nach_loeschen(self):
+        import datetime as dt
+        from app import repo
+        jahr = dt.date.today().year
+
+        self.app._neuer_fall()
+        self.app._rechnung_neu()  # 01
+        self.app._rechnung_neu()  # 02
+        self.app._rechnung_neu()  # 03
+        rechnungen = repo.rechnungen_fuer_fall(self.app.aktueller_fall_id)
+        self.assertEqual(len(rechnungen), 3)
+        mittlere = next(r for r in rechnungen if r["rechnungsnummer"] == f"02-{jahr}")
+
+        repo.rechnung_loeschen(mittlere["id"])
+
+        # Ohne Fix würde hier "03-{jahr}" vorgeschlagen (Anzahl 2 + 1) und
+        # mit der noch vorhandenen dritten Rechnung kollidieren.
+        self.assertEqual(self.app._naechste_rechnungsnummer(), f"04-{jahr}")
 
     def test_fall_loeschen_entfernt_aus_liste(self):
         self.app._neuer_fall()
