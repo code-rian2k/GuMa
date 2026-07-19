@@ -824,6 +824,10 @@ class Anwendung(tk.Tk):
         fenster.grab_set()
         self.wait_window(fenster)
         self._rechnungen_laden()
+        # Ein Excel-Export im Rechnungsfenster legt die Datei im Fall-Ordner
+        # ab - Unterlagen-Liste entsprechend auffrischen, damit sie ohne
+        # Fallwechsel sofort sichtbar ist.
+        self._unterlagen_laden()
 
     def _rechnung_loeschen(self):
         auswahl = self.rechnungen_baum.selection()
