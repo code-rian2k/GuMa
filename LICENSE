@@ -1,24 +1,29 @@
-GuMa - Fallverwaltung für psychologische Gutachten
-Copyright (C) 2026 Hofbrückl (https://www.hofbrueckl.com)
+Copyright (c) 2026 Hofbrückl (https://www.hofbrueckl.com). Alle Rechte vorbehalten.
 
-Diese Software ist freie Software: Sie dürfen sie unter den Bedingungen der
-GNU General Public License, Version 3, wie von der Free Software Foundation
-veröffentlicht, weitergeben und/oder verändern - nach Ihrer Wahl gemäß
-Version 3 der Lizenz oder (optional) jeder späteren Version.
+Diese Software ("GuMa") sowie der zugehörige Quellcode sind urheberrechtlich
+geschützt. Es handelt sich NICHT um Open-Source-Software - die Bereitstellung
+des Quellcodes auf GitHub dient der Transparenz und Nachvollziehbarkeit,
+gewährt aber keinerlei Nutzungsrechte.
 
-Der vollständige, verbindliche Lizenztext ist hier abrufbar:
-https://www.gnu.org/licenses/gpl-3.0.html
-(reiner Text: https://www.gnu.org/licenses/gpl-3.0.txt)
+Ohne vorherige ausdrückliche schriftliche Zustimmung der Urheberin ist es
+nicht gestattet,
 
-Diese Software wird OHNE JEGLICHE GEWÄHRLEISTUNG bereitgestellt - auch ohne
-die implizite Gewährleistung der Marktgängigkeit oder Eignung für einen
-bestimmten Zweck. Weitere Einzelheiten entnehmen Sie bitte der GNU General
-Public License unter obigem Link.
+  - diese Software oder Teile davon zu installieren, auszuführen oder
+    anderweitig zu nutzen,
+  - diese Software oder Teile davon zu vervielfältigen, zu verändern oder
+    davon abgeleitete Werke zu erstellen,
+  - diese Software oder Teile davon weiterzuverbreiten, zu veröffentlichen
+    oder Dritten zugänglich zu machen,
+  - diese Software gewerblich zu nutzen oder in eigene Produkte
+    einzubinden,
 
-Kurz zusammengefasst (keine rechtliche Bindungswirkung, es gilt der
-Originaltext unter obigem Link): Sie dürfen GuMa frei nutzen, verändern und
-weitergeben, auch kommerziell. Geben Sie eine veränderte Version weiter,
-müssen Sie deren Quellcode ebenfalls unter der GPLv3 zugänglich machen und
-den Copyright-Hinweis oben erhalten.
+unabhängig davon, ob dies entgeltlich oder unentgeltlich erfolgt.
 
-SPDX-License-Identifier: GPL-3.0-or-later
+Wer diese Software nutzen möchte, wird gebeten, vorher Rücksprache mit der
+Urheberin zu halten.
+
+Die Nutzung dieser Software erfolgt ohne jegliche Gewährleistung ("as is").
+Die Urheberin haftet nicht für Schäden, die aus der Nutzung dieser Software
+entstehen.
+
+Kontakt / Anfragen zur Nutzung: https://www.hofbrueckl.com

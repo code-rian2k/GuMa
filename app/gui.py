@@ -126,7 +126,7 @@ class Anwendung(tk.Tk):
     def _info_oeffnen(self):
         fenster = tk.Toplevel(self)
         fenster.title("Über GuMa")
-        fenster.geometry("440x340")
+        fenster.geometry("440x300")
         fenster.resizable(False, False)
         fenster.configure(bg=design.FARBE_HINTERGRUND)
         design.icon_setzen(fenster, BASIS_ORDNER)
@@ -153,16 +153,12 @@ class Anwendung(tk.Tk):
 
         ttk.Label(
             inhalt,
-            text=f"© {datetime.date.today().year} {design.AUTOR_KUERZEL}\n"
-                 "Freie Software unter der GNU General Public License v3.0\n"
-                 "(GPLv3) - Nutzung, Veränderung und Weitergabe (auch\n"
-                 "kommerziell) sind erlaubt; veränderte Versionen müssen\n"
-                 "ebenfalls unter der GPLv3 mit offenem Quellcode weitergegeben\n"
-                 "werden. Ohne jegliche Gewährleistung.",
+            text=f"© {datetime.date.today().year} {design.AUTOR_KUERZEL}. Alle Rechte vorbehalten.\n"
+                 "Diese Software ist keine Open-Source-Software. Nutzung,\n"
+                 "Veränderung oder Weitergabe nur nach Rücksprache und mit\n"
+                 "ausdrücklicher Zustimmung der Urheberin.",
             justify="left", font=("TkDefaultFont", 8),
         ).pack(anchor="w", pady=(0, 8))
-
-        _link_erstellen("Vollständiger Lizenztext (gnu.org)", "https://www.gnu.org/licenses/gpl-3.0.html")
 
         ttk.Button(inhalt, text="Schließen", command=fenster.destroy).pack(anchor="e", pady=(15, 0))
 
