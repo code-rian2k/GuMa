@@ -35,9 +35,34 @@ STATUS_FARBEN = {
     "abgeschlossen": "#F1F1F1",
 }
 
+# "Ampel" für die Fristen-Übersicht: Fristen, die schon überfällig oder in
+# Kürze fällig sind, sollen ins Auge springen, ohne dass man jedes Datum
+# einzeln nachrechnen muss.
+FRIST_WARNSCHWELLE_TAGE = 3
+FRIST_FARBEN = {
+    "ueberfaellig": "#F8D7DA",
+    "bald_faellig": "#FFF3CD",
+}
+
 
 def heute():
     return datetime.date.today().strftime("%d.%m.%Y")
+
+
+def _frist_dringlichkeit(datum_text):
+    """Ordnet ein Fristen-Datum (Text, TT.MM.JJJJ) einer Dringlichkeits-Stufe
+    für die farbliche Hervorhebung in der Übersicht zu. Nicht auswertbare
+    Daten bekommen keine besondere Hervorhebung."""
+    try:
+        datum = datetime.datetime.strptime(datum_text or "", "%d.%m.%Y").date()
+    except ValueError:
+        return None
+    heute_datum = datetime.date.today()
+    if datum < heute_datum:
+        return "ueberfaellig"
+    if (datum - heute_datum).days <= FRIST_WARNSCHWELLE_TAGE:
+        return "bald_faellig"
+    return None
 
 
 def _text_zu_zahl(text, standard=0.0):
@@ -257,6 +282,7 @@ class Anwendung(tk.Tk):
 
         self._faelle_neu_laden()
         self._uebersicht_fristen_laden()
+        self._uebersicht_gutachten_laden()
 
     # ---------- Fallliste ----------
 
@@ -339,6 +365,7 @@ class Anwendung(tk.Tk):
         self.aktueller_fall_id = None
         self._faelle_neu_laden()
         self._fall_in_tabs_laden()
+        self._uebersicht_gutachten_laden()
 
     def _fall_in_tabs_laden(self):
         self._stammdaten_laden()
@@ -358,11 +385,31 @@ class Anwendung(tk.Tk):
         for spalte, text, breite in [("datum", "Datum", 100), ("fall", "Fall", 220), ("beschreibung", "Beschreibung", 340)]:
             self.uebersicht_fristen_baum.heading(spalte, text=text)
             self.uebersicht_fristen_baum.column(spalte, width=breite)
+        for tag, farbe in FRIST_FARBEN.items():
+            self.uebersicht_fristen_baum.tag_configure(tag, background=farbe)
         self.uebersicht_fristen_baum.pack(fill="both", expand=True, pady=(0, 5))
         self._uebersicht_termin_fall_ids = {}
         self.uebersicht_fristen_baum.bind("<Double-1>", self._uebersicht_termin_oeffnen)
         ttk.Label(
-            tab, text="(Doppelklick öffnet den Fall im Tab \"Fristen & Termine\")",
+            tab,
+            text="(Doppelklick öffnet den Fall im Tab \"Fristen & Termine\" - rot = überfällig, "
+                 f"gelb = fällig in den nächsten {FRIST_WARNSCHWELLE_TAGE} Tagen)",
+            font=("TkDefaultFont", 8, "italic"),
+        ).pack(anchor="w", pady=(0, 15))
+
+        ttk.Label(tab, text="Gutachten schnell öffnen:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+        spalten = ("aktenzeichen", "in_sachen", "dateiname")
+        self.uebersicht_gutachten_baum = ttk.Treeview(tab, columns=spalten, show="headings")
+        for spalte, text, breite in [
+            ("aktenzeichen", "Aktenzeichen", 110), ("in_sachen", "In Sachen", 220), ("dateiname", "Datei", 340),
+        ]:
+            self.uebersicht_gutachten_baum.heading(spalte, text=text)
+            self.uebersicht_gutachten_baum.column(spalte, width=breite)
+        self.uebersicht_gutachten_baum.pack(fill="both", expand=True, pady=(0, 5))
+        self._uebersicht_gutachten_pfade = {}
+        self.uebersicht_gutachten_baum.bind("<Double-1>", self._uebersicht_gutachten_oeffnen)
+        ttk.Label(
+            tab, text="(Doppelklick öffnet die Gutachten-Datei direkt)",
             font=("TkDefaultFont", 8, "italic"),
         ).pack(anchor="w")
 
@@ -372,9 +419,11 @@ class Anwendung(tk.Tk):
         self._uebersicht_termin_fall_ids = {}
         for termin in repo.alle_offenen_termine():
             fall_bezeichnung = termin.get("aktenzeichen") or termin.get("in_sachen") or f"Fall {termin['fall_id']}"
+            tag = _frist_dringlichkeit(termin["datum"])
             self.uebersicht_fristen_baum.insert(
                 "", "end", iid=str(termin["id"]),
                 values=(termin["datum"], fall_bezeichnung, termin["beschreibung"]),
+                tags=(tag,) if tag else (),
             )
             self._uebersicht_termin_fall_ids[str(termin["id"])] = termin["fall_id"]
 
@@ -386,6 +435,34 @@ class Anwendung(tk.Tk):
         if fall_id is None:
             return
         self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Fristen & Termine"
+
+    def _uebersicht_gutachten_laden(self):
+        for zeile in self.uebersicht_gutachten_baum.get_children():
+            self.uebersicht_gutachten_baum.delete(zeile)
+        self._uebersicht_gutachten_pfade = {}
+        for fall in repo.faelle_liste():
+            ordner = dateien.fall_ordner_pfad(DOKUMENTE_ORDNER, fall, fall["id"])
+            for datei in dateien.dateien_auflisten(ordner):
+                if not datei["name"].lower().startswith("gutachten"):
+                    continue
+                iid = f"{fall['id']}:{datei['name']}"
+                self.uebersicht_gutachten_baum.insert(
+                    "", "end", iid=iid,
+                    values=(fall["aktenzeichen"], fall["in_sachen"], datei["name"]),
+                )
+                self._uebersicht_gutachten_pfade[iid] = datei["pfad"]
+
+    def _uebersicht_gutachten_oeffnen(self, _event=None):
+        auswahl = self.uebersicht_gutachten_baum.selection()
+        if not auswahl:
+            return
+        pfad = self._uebersicht_gutachten_pfade.get(auswahl[0])
+        if not pfad:
+            return
+        try:
+            os.startfile(pfad)  # Windows
+        except AttributeError:
+            messagebox.showinfo("Datei", f"Datei liegt hier:\n{pfad}")
 
     # ---------- Tab: Stammdaten ----------
 
@@ -503,10 +580,11 @@ class Anwendung(tk.Tk):
         ttk.Entry(eingabe, textvariable=self.neuer_termin_text, width=40).pack(side="left", padx=5)
         ttk.Button(eingabe, text="Hinzufügen", command=self._termin_hinzufuegen).pack(side="left", padx=5)
 
-        self.termine_baum = ttk.Treeview(tab, columns=("datum", "beschreibung", "erledigt"), show="headings")
-        for spalte, text, breite in [("datum", "Datum", 100), ("beschreibung", "Beschreibung", 400), ("erledigt", "Erledigt", 80)]:
+        self.termine_baum = ttk.Treeview(tab, columns=("datum", "beschreibung"), show="headings")
+        for spalte, text, breite in [("datum", "Datum", 100), ("beschreibung", "Beschreibung", 460)]:
             self.termine_baum.heading(spalte, text=text)
             self.termine_baum.column(spalte, width=breite)
+        self.termine_baum.tag_configure("erledigt", font=("TkDefaultFont", 10, "overstrike"), foreground="#888888")
         self.termine_baum.pack(fill="both", expand=True)
         self.termine_baum.bind("<Double-1>", self._termin_erledigt_umschalten)
 
@@ -520,8 +598,11 @@ class Anwendung(tk.Tk):
             self.termine_baum.delete(z)
         if self.aktueller_fall_id:
             for termin in repo.termine_liste(self.aktueller_fall_id):
-                self.termine_baum.insert("", "end", iid=str(termin["id"]),
-                                          values=(termin["datum"], termin["beschreibung"], "Ja" if termin["erledigt"] else "Nein"))
+                self.termine_baum.insert(
+                    "", "end", iid=str(termin["id"]),
+                    values=(termin["datum"], termin["beschreibung"]),
+                    tags=("erledigt",) if termin["erledigt"] else (),
+                )
         self._uebersicht_fristen_laden()
 
     def _termin_hinzufuegen(self):
@@ -540,8 +621,8 @@ class Anwendung(tk.Tk):
         if not auswahl:
             return
         termin_id = int(auswahl[0])
-        aktuell = self.termine_baum.item(auswahl[0])["values"][2] == "Ja"
-        repo.termin_erledigt_setzen(termin_id, not aktuell)
+        aktuell_erledigt = "erledigt" in self.termine_baum.item(auswahl[0])["tags"]
+        repo.termin_erledigt_setzen(termin_id, not aktuell_erledigt)
         self._fristen_laden()
 
     def _termin_loeschen(self):
@@ -714,6 +795,7 @@ class Anwendung(tk.Tk):
         pfad = os.path.join(ordner, dateiname)
         docgen.gutachten_erstellen(fall, pfad, vorlagen.vorlage_pfad(BASIS_ORDNER, vorlage))
         self._unterlagen_laden()
+        self._uebersicht_gutachten_laden()
         self._dokument_oeffnen_und_melden(pfad, "Gutachten-Grundgerüst", docgen.offene_platzhalter(pfad))
 
     def _dokument_oeffnen_und_melden(self, pfad, bezeichnung, offene_platzhalter=None):
@@ -814,6 +896,7 @@ class Anwendung(tk.Tk):
         if messagebox.askyesno("Löschen", "Diese Datei unwiderruflich löschen?"):
             dateien.datei_loeschen(auswahl[0])
             self._unterlagen_laden()
+            self._uebersicht_gutachten_laden()
 
     def _fall_als_zip_exportieren(self):
         if not self.aktueller_fall_id:
