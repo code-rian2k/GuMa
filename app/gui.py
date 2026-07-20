@@ -431,6 +431,15 @@ class Anwendung(tk.Tk):
 
         self.stamm_vars = {}
 
+        # Zuerst am unteren Rand einplanen, BEVOR die (teils recht hohen)
+        # Formularbereiche gepackt werden: so bleibt der Button auch auf
+        # kleineren Bildschirmen/Fenstern garantiert sichtbar, statt von den
+        # darüberliegenden Feldern nach unten aus dem sichtbaren Bereich
+        # verdrängt zu werden.
+        ttk.Button(tab, text="Speichern", style="Accent.TButton", command=self._stammdaten_speichern).pack(
+            side="bottom", anchor="w", pady=10
+        )
+
         verfahren_rahmen = ttk.LabelFrame(tab, text="Verfahren", padding=10)
         verfahren_rahmen.pack(fill="x", pady=(0, 10))
         verfahren_felder = [
@@ -475,8 +484,6 @@ class Anwendung(tk.Tk):
         ttk.Label(status_rahmen, text="Auftragstext (Beweisbeschluss o.ä.):").grid(row=1, column=0, sticky="ne", pady=3, padx=5)
         self.auftragstext_text = tk.Text(status_rahmen, width=60, height=5)
         self.auftragstext_text.grid(row=1, column=1, sticky="w", pady=3, padx=5)
-
-        ttk.Button(tab, text="Speichern", style="Accent.TButton", command=self._stammdaten_speichern).pack(anchor="w", pady=10)
 
         # Änderungen an den Falldaten nachverfolgen, damit beim Fallwechsel
         # oder Beenden ohne vorheriges Speichern gewarnt werden kann.
