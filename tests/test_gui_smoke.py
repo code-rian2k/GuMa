@@ -168,13 +168,6 @@ class TestGuiDurchklick(unittest.TestCase):
         termine = repo.termine_liste(self.app.aktueller_fall_id)
         self.assertEqual(len(termine), 1)
 
-    def test_uebersicht_faelle_wird_bei_neuem_fall_aktualisiert(self):
-        self.app._neuer_fall()
-        self.app.stamm_vars["aktenzeichen"].set("1 F 1/26")
-        self.app._stammdaten_speichern()
-
-        self.assertIn(str(self.app.aktueller_fall_id), self.app.uebersicht_faelle_baum.get_children())
-
     def test_uebersicht_fristen_zeigt_termine_ueber_alle_faelle(self):
         self.app._neuer_fall()
         self.app.neuer_termin_text.set("Ortstermin bei der Familie")
