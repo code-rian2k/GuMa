@@ -80,9 +80,9 @@ class Treeview(_Base):
         self._order = []
         self._selection = []
 
-    def insert(self, parent, index, iid=None, values=None, **kw):
+    def insert(self, parent, index, iid=None, values=None, tags=(), **kw):
         iid = iid if iid is not None else str(len(self._items))
-        self._items[iid] = values
+        self._items[iid] = {"values": values, "tags": tuple(tags) if tags else ()}
         self._order.append(iid)
         return iid
 
@@ -111,7 +111,7 @@ class Treeview(_Base):
             raise TclError(f'Item "{iid}" not found in treeview')
 
     def item(self, iid, option=None):
-        werte = {"values": self._items.get(iid)}
+        werte = self._items.get(iid) or {"values": None, "tags": ()}
         if option:
             return werte.get(option)
         return werte

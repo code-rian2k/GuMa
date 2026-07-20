@@ -168,6 +168,58 @@ class TestGuiDurchklick(unittest.TestCase):
         termine = repo.termine_liste(self.app.aktueller_fall_id)
         self.assertEqual(len(termine), 1)
 
+    def test_termin_erledigt_wird_durchgestrichen_dargestellt(self):
+        self.app._neuer_fall()
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        self.app.termine_baum.selection_set(str(termin_id))
+        self.app._termin_erledigt_umschalten()
+        self.assertIn("erledigt", self.app.termine_baum.item(str(termin_id))["tags"])
+
+        # Nochmal umschalten -> wieder offen, keine Durchstreichung mehr
+        self.app.termine_baum.selection_set(str(termin_id))
+        self.app._termin_erledigt_umschalten()
+        self.assertNotIn("erledigt", self.app.termine_baum.item(str(termin_id))["tags"])
+
+    def test_uebersicht_fristen_ampel_ueberfaellige_frist(self):
+        import datetime
+        gestern = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set(gestern)
+        self.app.neuer_termin_text.set("Überfällige Frist")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        self.assertIn("ueberfaellig", self.app.uebersicht_fristen_baum.item(str(termin_id))["tags"])
+
+    def test_uebersicht_fristen_ampel_bald_faellige_frist(self):
+        import datetime
+        morgen = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d.%m.%Y")
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set(morgen)
+        self.app.neuer_termin_text.set("Bald fällige Frist")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        self.assertIn("bald_faellig", self.app.uebersicht_fristen_baum.item(str(termin_id))["tags"])
+
+    def test_uebersicht_fristen_ampel_keine_hervorhebung_bei_weit_entfernter_frist(self):
+        import datetime
+        in_zwei_monaten = (datetime.date.today() + datetime.timedelta(days=60)).strftime("%d.%m.%Y")
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set(in_zwei_monaten)
+        self.app.neuer_termin_text.set("Frist mit viel Vorlauf")
+        self.app._termin_hinzufuegen()
+        from app import repo
+        termin_id = repo.termine_liste(self.app.aktueller_fall_id)[0]["id"]
+
+        self.assertEqual(self.app.uebersicht_fristen_baum.item(str(termin_id))["tags"], ())
+
     def test_uebersicht_fristen_zeigt_termine_ueber_alle_faelle(self):
         self.app._neuer_fall()
         self.app.neuer_termin_text.set("Ortstermin bei der Familie")
@@ -356,6 +408,20 @@ class TestGuiDurchklick(unittest.TestCase):
         text = "\n".join(p.text for p in docx.Document(pfad).paragraphs)
         self.assertIn("3 F 3/26", text)
         self.assertIn("Augsburg", text)
+
+    def test_uebersicht_gutachten_schnellzugriff_zeigt_erstelltes_gutachten(self):
+        self._vorlage_hinzufuegen("gutachten")
+        self.app._neuer_fall()
+        self.app.stamm_vars["aktenzeichen"].set("3 F 3/26")
+        self.app._stammdaten_speichern()
+
+        self.app._gutachten_erstellen()
+
+        eintraege = self.app.uebersicht_gutachten_baum.get_children()
+        self.assertEqual(len(eintraege), 1)
+        pfad = self.app._uebersicht_gutachten_pfade[eintraege[0]]
+        self.assertTrue(os.path.isfile(pfad))
+        self.assertTrue(os.path.basename(pfad).lower().startswith("gutachten"))
 
     def test_rechnungsfenster_oeffnet_und_berechnet(self):
         self.app._neuer_fall()
