@@ -265,12 +265,10 @@ class Anwendung(tk.Tk):
             self.fall_baum.delete(zeile)
         status_filter = self.status_filter_var.get()
         status_filter = None if status_filter in ("", "Alle") else status_filter
-        faelle = repo.faelle_liste(self.suche_var.get(), status_filter)
-        for fall in faelle:
+        for fall in repo.faelle_liste(self.suche_var.get(), status_filter):
             self.fall_baum.insert("", "end", iid=str(fall["id"]),
                                    values=(fall["aktenzeichen"], fall["in_sachen"], fall["status"]),
                                    tags=(fall["status"],))
-        self._uebersicht_faelle_laden(faelle)
 
     def _fall_ausgewaehlt(self, _event=None):
         auswahl = self.fall_baum.selection()
@@ -355,26 +353,8 @@ class Anwendung(tk.Tk):
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="Übersicht")
 
-        ttk.Label(tab, text="Alle Fälle:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
-        spalten = ("aktenzeichen", "in_sachen", "gericht", "status")
-        self.uebersicht_faelle_baum = ttk.Treeview(tab, columns=spalten, show="headings", height=8)
-        for spalte, text, breite in [
-            ("aktenzeichen", "Aktenzeichen", 110), ("in_sachen", "In Sachen", 220),
-            ("gericht", "Gericht", 160), ("status", "Status", 130),
-        ]:
-            self.uebersicht_faelle_baum.heading(spalte, text=text)
-            self.uebersicht_faelle_baum.column(spalte, width=breite)
-        for status, farbe in STATUS_FARBEN.items():
-            self.uebersicht_faelle_baum.tag_configure(status, background=farbe)
-        self.uebersicht_faelle_baum.pack(fill="both", expand=True, pady=(0, 5))
-        self.uebersicht_faelle_baum.bind("<Double-1>", self._uebersicht_fall_oeffnen)
-        ttk.Label(
-            tab, text="(Doppelklick öffnet den Fall bei den Falldaten)",
-            font=("TkDefaultFont", 8, "italic"),
-        ).pack(anchor="w", pady=(0, 15))
-
         ttk.Label(tab, text="Offene Fristen & Termine über alle Fälle:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
-        self.uebersicht_fristen_baum = ttk.Treeview(tab, columns=("datum", "fall", "beschreibung"), show="headings", height=8)
+        self.uebersicht_fristen_baum = ttk.Treeview(tab, columns=("datum", "fall", "beschreibung"), show="headings")
         for spalte, text, breite in [("datum", "Datum", 100), ("fall", "Fall", 220), ("beschreibung", "Beschreibung", 340)]:
             self.uebersicht_fristen_baum.heading(spalte, text=text)
             self.uebersicht_fristen_baum.column(spalte, width=breite)
@@ -385,22 +365,6 @@ class Anwendung(tk.Tk):
             tab, text="(Doppelklick öffnet den Fall im Tab \"Fristen & Termine\")",
             font=("TkDefaultFont", 8, "italic"),
         ).pack(anchor="w")
-
-    def _uebersicht_faelle_laden(self, faelle):
-        for zeile in self.uebersicht_faelle_baum.get_children():
-            self.uebersicht_faelle_baum.delete(zeile)
-        for fall in faelle:
-            self.uebersicht_faelle_baum.insert(
-                "", "end", iid=str(fall["id"]),
-                values=(fall["aktenzeichen"], fall["in_sachen"], fall.get("gericht") or "", fall["status"]),
-                tags=(fall["status"],),
-            )
-
-    def _uebersicht_fall_oeffnen(self, _event=None):
-        auswahl = self.uebersicht_faelle_baum.selection()
-        if not auswahl:
-            return
-        self._springe_zu_fall(int(auswahl[0]))  # Standard-Tab: Falldaten
 
     def _uebersicht_fristen_laden(self):
         for zeile in self.uebersicht_fristen_baum.get_children():
