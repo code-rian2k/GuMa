@@ -16,8 +16,9 @@ PLATZHALTER_MUSTER = re.compile(r"\{\{[A-Z_]+\}\}")
 ANSCHREIBEN_PLATZHALTER = [
     "EMPFAENGER_ANREDE", "EMPFAENGER_ANREDE_ENDUNG", "EMPFAENGER_NAME",
     "DATUM", "RICHTER_TEXT", "KINDER", "GUTACHTER_TELEFON", "GUTACHTER_NAME",
+    "ABSENDER_ADRESSE", "IN_SACHEN", "MUTTER_NAME", "VATER_NAME",
 ]
-GUTACHTEN_PLATZHALTER = ["GERICHT", "ABTEILUNG", "DATUM", "AKTENZEICHEN"]
+GUTACHTEN_PLATZHALTER = ["GERICHT", "ABTEILUNG", "DATUM", "AKTENZEICHEN", "IN_SACHEN", "MUTTER_NAME", "VATER_NAME"]
 
 
 def _ersetze_in_paragraph(paragraph, werte: dict):
@@ -73,6 +74,10 @@ def anschreiben_erstellen(fall: dict, einstellungen: dict, ausgabe_pfad: str, vo
         "KINDER": fall.get("kinder", ""),
         "GUTACHTER_TELEFON": einstellungen.get("telefon", ""),
         "GUTACHTER_NAME": einstellungen.get("name", ""),
+        "ABSENDER_ADRESSE": einstellungen.get("absender_adresse", ""),
+        "IN_SACHEN": fall.get("in_sachen", ""),
+        "MUTTER_NAME": fall.get("mutter_name", ""),
+        "VATER_NAME": fall.get("vater_name", ""),
     }
     return fuelle_dokument(vorlage_pfad, ausgabe_pfad, werte)
 
@@ -83,5 +88,8 @@ def gutachten_erstellen(fall: dict, ausgabe_pfad: str, vorlage_pfad: str):
         "ABTEILUNG": fall.get("abteilung", ""),
         "DATUM": fall.get("datum", ""),
         "AKTENZEICHEN": fall.get("aktenzeichen", ""),
+        "IN_SACHEN": fall.get("in_sachen", ""),
+        "MUTTER_NAME": fall.get("mutter_name", ""),
+        "VATER_NAME": fall.get("vater_name", ""),
     }
     return fuelle_dokument(vorlage_pfad, ausgabe_pfad, werte)

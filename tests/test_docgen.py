@@ -27,8 +27,13 @@ class TestDokumentErstellung(unittest.TestCase):
             "datum": "08.07.2026", "richter": "Herrn Müller, Richter am Amtsgericht Augsburg",
             "kinder": "Max und Lisa", "gericht": "Augsburg",
             "abteilung": "Abteilung für Familiensachen", "aktenzeichen": "123 F 456/26",
+            "in_sachen": "Mustermann ./. Musterfrau", "mutter_name": "Musterfrau, Erika",
+            "vater_name": "Mustermann, Max",
         }
-        self.einstellungen = {"telefon": "0821/349 43 73", "name": "Frau Dr. Beispiel, Dipl.-Psych."}
+        self.einstellungen = {
+            "telefon": "0821/349 43 73", "name": "Frau Dr. Beispiel, Dipl.-Psych.",
+            "absender_adresse": "Musterstraße 1, 86150 Augsburg",
+        }
 
         self.anschreiben_vorlage = os.path.join(self.tmp, "anschreiben_vorlage.docx")
         _test_vorlage_bauen(self.anschreiben_vorlage, ANSCHREIBEN_PLATZHALTER)
@@ -47,6 +52,10 @@ class TestDokumentErstellung(unittest.TestCase):
         self.assertIn("Musterfrau", text)
         self.assertIn("Max und Lisa", text)
         self.assertIn("0821/349 43 73", text)
+        self.assertIn("Musterstraße 1, 86150 Augsburg", text)
+        self.assertIn("Mustermann ./. Musterfrau", text)
+        self.assertIn("Musterfrau, Erika", text)
+        self.assertIn("Mustermann, Max", text)
 
     def test_gutachten_hat_keine_offenen_platzhalter(self):
         pfad = os.path.join(self.tmp, "gutachten.docx")
@@ -59,6 +68,9 @@ class TestDokumentErstellung(unittest.TestCase):
         text = "\n".join(p.text for p in docx.Document(pfad).paragraphs)
         self.assertIn("123 F 456/26", text)
         self.assertIn("Augsburg", text)
+        self.assertIn("Mustermann ./. Musterfrau", text)
+        self.assertIn("Musterfrau, Erika", text)
+        self.assertIn("Mustermann, Max", text)
 
     def test_leere_felder_erzeugen_keinen_fehler(self):
         pfad = os.path.join(self.tmp, "anschreiben_leer.docx")

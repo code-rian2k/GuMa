@@ -1171,10 +1171,17 @@ class Anwendung(tk.Tk):
             typ_rahmen.pack(fill="x", pady=(4, 8))
             ttk.Label(typ_rahmen, text=f"{VORLAGEN_TYP_BESCHRIFTUNG[typ]}:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
             ttk.Label(
-                typ_rahmen,
-                text=f"Unterstützte Platzhalter: {vorlagen_platzhalter_text[typ]}",
-                justify="left", font=("TkDefaultFont", 8), wraplength=520,
+                typ_rahmen, text="Unterstützte Platzhalter (Text zum Kopieren markieren):",
+                font=("TkDefaultFont", 8),
             ).pack(anchor="w")
+            platzhalter_feld = tk.Text(
+                typ_rahmen, height=2, wrap="word", font=("TkDefaultFont", 8),
+                relief="flat", background=design.FARBE_HINTERGRUND, borderwidth=0,
+                highlightthickness=0,
+            )
+            platzhalter_feld.insert("1.0", vorlagen_platzhalter_text[typ])
+            platzhalter_feld.configure(state="disabled")
+            platzhalter_feld.pack(anchor="w", fill="x")
             liste_container = ttk.Frame(typ_rahmen)
             liste_container.pack(fill="x", anchor="w", pady=(4, 4))
             vorlagen_listen_container[typ] = liste_container
