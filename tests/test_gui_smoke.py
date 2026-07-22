@@ -553,14 +553,64 @@ class TestGuiDurchklick(unittest.TestCase):
         filedialog._werte["askopenfilenames"] = (testdatei,)
         self.app._unterlagen_hinzufuegen()
 
-        backup_ziel = os.path.join(self.tmp_dir, "backup_ziel")
-        os.makedirs(backup_ziel)
-        filedialog._werte["askdirectory"] = backup_ziel
+        backup_zip = os.path.join(self.tmp_dir, "backup_ziel", "mein-backup.zip")
+        filedialog._werte["asksaveasfilename"] = backup_zip
         self.app._backup_erstellen()
 
-        unterordner = os.listdir(backup_ziel)
-        self.assertEqual(len(unterordner), 1)
-        self.assertTrue(unterordner[0].startswith("Gutachten-Manager-Backup_"))
+        self.assertTrue(os.path.isfile(backup_zip))
+        import zipfile
+        import app.db as db_modul
+        with zipfile.ZipFile(backup_zip) as zf:
+            namen = zf.namelist()
+        self.assertIn(os.path.basename(db_modul.DB_PATH), namen)
+        self.assertTrue(any(n.endswith("beleg.pdf") for n in namen))
+
+    def test_backup_importieren_stellt_geloeschten_fall_wieder_her(self):
+        from tkinter import filedialog
+        from app import repo
+
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+        self.app.stamm_vars["aktenzeichen"].set("8 F 8/26")
+        self.app._stammdaten_speichern()
+
+        backup_zip = os.path.join(self.tmp_dir, "backup.zip")
+        filedialog._werte["asksaveasfilename"] = backup_zip
+        self.app._backup_erstellen()
+
+        repo.fall_loeschen(fall_id)
+        self.assertIsNone(repo.fall_holen(fall_id))
+
+        filedialog._werte["askopenfilename"] = backup_zip
+        self.app._backup_importieren()
+
+        wiederhergestellt = repo.fall_holen(fall_id)
+        self.assertIsNotNone(wiederhergestellt)
+        self.assertEqual(wiederhergestellt["aktenzeichen"], "8 F 8/26")
+
+    def test_backup_importieren_ohne_bestaetigung_aendert_nichts(self):
+        from tkinter import filedialog, messagebox
+        from app import repo
+
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+        self.app.stamm_vars["aktenzeichen"].set("9 F 9/26")
+        self.app._stammdaten_speichern()
+
+        backup_zip = os.path.join(self.tmp_dir, "backup2.zip")
+        filedialog._werte["asksaveasfilename"] = backup_zip
+        self.app._backup_erstellen()
+
+        repo.fall_loeschen(fall_id)
+
+        try:
+            messagebox._antwort_ja_nein["value"] = False
+            filedialog._werte["askopenfilename"] = backup_zip
+            self.app._backup_importieren()
+        finally:
+            messagebox._antwort_ja_nein["value"] = True
+
+        self.assertIsNone(repo.fall_holen(fall_id))  # Import wurde abgebrochen, nichts wiederhergestellt
 
     def test_speicherort_aendern_wird_von_der_app_uebernommen(self):
         from app import repo

@@ -50,19 +50,54 @@ class TestDateiverwaltung(unittest.TestCase):
         erzeugt = dateien.fall_als_zip_exportieren(self.fall_ordner, ziel_zip)
         self.assertTrue(os.path.isfile(erzeugt))
 
-    def test_backup_erstellen_kopiert_db_und_dokumente(self):
+    def test_backup_erstellen_erzeugt_zip_mit_db_dokumenten_und_vorlagen(self):
         db_pfad = os.path.join(self.basis, "gutachten_manager.db")
         with open(db_pfad, "w") as f:
             f.write("fake-db")
         quelle = self._testdatei_anlegen("notiz.pdf")
         dateien.datei_hinzufuegen(self.fall_ordner, quelle)
+        vorlagen_ordner = os.path.join(self.basis, "vorlagen")
+        os.makedirs(vorlagen_ordner)
+        with open(os.path.join(vorlagen_ordner, "anschreiben_vorlage.docx"), "w") as f:
+            f.write("fake-docx")
 
-        ziel_basis = tempfile.mkdtemp()
-        backup_ordner = dateien.backup_erstellen(db_pfad, os.path.join(self.basis, "dokumente"), ziel_basis)
+        ziel_zip = os.path.join(self.basis, "backup.zip")
+        erzeugt = dateien.backup_erstellen(db_pfad, os.path.join(self.basis, "dokumente"), vorlagen_ordner, ziel_zip)
 
-        self.assertTrue(os.path.isfile(os.path.join(backup_ordner, "gutachten_manager.db")))
-        kopierte_datei = os.path.join(backup_ordner, "dokumente", "1 F 1-26", "notiz.pdf")
-        self.assertTrue(os.path.isfile(kopierte_datei))
+        self.assertTrue(os.path.isfile(erzeugt))
+        import zipfile
+        with zipfile.ZipFile(erzeugt) as zf:
+            namen = zf.namelist()
+        self.assertIn("gutachten_manager.db", namen)
+        self.assertIn("dokumente/1 F 1-26/notiz.pdf", namen)
+        self.assertIn("vorlagen/anschreiben_vorlage.docx", namen)
+
+    def test_backup_wiederherstellen_stellt_db_dokumente_und_vorlagen_wieder_her(self):
+        db_pfad = os.path.join(self.basis, "gutachten_manager.db")
+        with open(db_pfad, "w") as f:
+            f.write("fake-db-inhalt")
+        quelle = self._testdatei_anlegen("notiz.pdf")
+        dateien.datei_hinzufuegen(self.fall_ordner, quelle)
+        vorlagen_ordner = os.path.join(self.basis, "vorlagen")
+        os.makedirs(vorlagen_ordner)
+        with open(os.path.join(vorlagen_ordner, "vorlage.docx"), "w") as f:
+            f.write("fake-docx-inhalt")
+
+        ziel_zip = os.path.join(self.basis, "backup.zip")
+        dateien.backup_erstellen(db_pfad, os.path.join(self.basis, "dokumente"), vorlagen_ordner, ziel_zip)
+
+        # Simuliert eine frische, noch leere GuMa-Installation auf einem neuen Rechner
+        neue_installation = tempfile.mkdtemp()
+        neue_db = os.path.join(neue_installation, "gutachten_manager.db")
+        neue_dokumente = os.path.join(neue_installation, "dokumente")
+        neue_vorlagen = os.path.join(neue_installation, "vorlagen")
+
+        dateien.backup_wiederherstellen(ziel_zip, neue_db, neue_dokumente, neue_vorlagen)
+
+        with open(neue_db) as f:
+            self.assertEqual(f.read(), "fake-db-inhalt")
+        self.assertTrue(os.path.isfile(os.path.join(neue_dokumente, "1 F 1-26", "notiz.pdf")))
+        self.assertTrue(os.path.isfile(os.path.join(neue_vorlagen, "vorlage.docx")))
 
     def test_fall_ordner_loeschen(self):
         quelle = self._testdatei_anlegen("y.pdf")

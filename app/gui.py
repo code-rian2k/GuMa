@@ -143,6 +143,7 @@ class Anwendung(tk.Tk):
         datei_menu.add_command(label="Stammdaten / Einstellungen...", command=self._einstellungen_oeffnen)
         datei_menu.add_separator()
         datei_menu.add_command(label="Alle Daten sichern (Backup)...", command=self._backup_erstellen)
+        datei_menu.add_command(label="Backup importieren...", command=self._backup_importieren)
         datei_menu.add_separator()
         datei_menu.add_command(label="Beenden", command=self._beenden)
         menu.add_cascade(label="Datei", menu=datei_menu)
@@ -204,19 +205,54 @@ class Anwendung(tk.Tk):
         ttk.Button(inhalt, text="Schließen", command=fenster.destroy).pack(anchor="e", pady=(15, 0))
 
     def _backup_erstellen(self):
-        ziel = filedialog.askdirectory(
-            title="Sicherungsort wählen (z. B. externe Festplatte oder Netzlaufwerk/Server)"
+        zeitstempel = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+        ziel = filedialog.asksaveasfilename(
+            title="Backup-Datei speichern (z. B. auf einem USB-Stick oder Netzlaufwerk)",
+            initialfile=f"GuMa-Backup_{zeitstempel}.zip",
+            defaultextension=".zip",
+            filetypes=[("ZIP-Archiv", "*.zip")],
         )
         if not ziel:
             return
         try:
-            backup_ordner = dateien.backup_erstellen(DB_PATH, DOKUMENTE_ORDNER, ziel)
+            backup_datei = dateien.backup_erstellen(
+                DB_PATH, DOKUMENTE_ORDNER, vorlagen.ermittle_vorlagen_ordner(BASIS_ORDNER), ziel
+            )
         except Exception as fehler:
             messagebox.showerror("Backup fehlgeschlagen", str(fehler))
             return
         messagebox.showinfo(
             "Backup erstellt",
-            f"Alle Fälle, Dokumente und Unterlagen wurden gesichert unter:\n{backup_ordner}",
+            f"Alle Falldaten, Einstellungen, Dokumente/Unterlagen und Vorlagen wurden gesichert in:\n{backup_datei}\n\n"
+            "Diese eine Datei reicht aus, um auf einer neuen GuMa-Installation über "
+            "Datei → \"Backup importieren...\" wieder mit allen Daten weiterzuarbeiten.",
+        )
+
+    def _backup_importieren(self):
+        if not messagebox.askyesno(
+            "Backup importieren",
+            "Beim Import werden die aktuellen Falldaten, Einstellungen, Dokumente/Unterlagen "
+            "und Vorlagen durch den Inhalt der Backup-Datei überschrieben bzw. ergänzt.\n\n"
+            "Das ist z.B. direkt nach einer frischen GuMa-Installation gedacht, um dort "
+            "sofort mit allen bisherigen Daten weiterzuarbeiten. Fortfahren?",
+        ):
+            return
+        quelle = filedialog.askopenfilename(
+            title="Backup-Datei auswählen", filetypes=[("ZIP-Archiv", "*.zip")]
+        )
+        if not quelle:
+            return
+        try:
+            dateien.backup_wiederherstellen(
+                quelle, DB_PATH, DOKUMENTE_ORDNER, vorlagen.ermittle_vorlagen_ordner(BASIS_ORDNER)
+            )
+        except Exception as fehler:
+            messagebox.showerror("Import fehlgeschlagen", str(fehler))
+            return
+        messagebox.showinfo(
+            "Backup importiert",
+            "Das Backup wurde eingespielt. Bitte GuMa jetzt einmal beenden und neu starten, "
+            "damit alle Daten geladen werden.",
         )
 
     def _beenden(self):

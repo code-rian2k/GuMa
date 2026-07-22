@@ -206,10 +206,11 @@ def build_stub_tkinter():
     messagebox_mod._calls = calls
     messagebox_mod._antwort_ja_nein = ANTWORT_JA_NEIN
 
-    dialog_werte = {"asksaveasfilename": "", "askopenfilenames": (), "askdirectory": ""}
+    dialog_werte = {"asksaveasfilename": "", "askopenfilenames": (), "askopenfilename": "", "askdirectory": ""}
 
     filedialog_mod.asksaveasfilename = lambda **kw: dialog_werte["asksaveasfilename"]
     filedialog_mod.askopenfilenames = lambda **kw: dialog_werte["askopenfilenames"]
+    filedialog_mod.askopenfilename = lambda **kw: dialog_werte["askopenfilename"]
     filedialog_mod.askdirectory = lambda **kw: dialog_werte["askdirectory"]
     filedialog_mod._werte = dialog_werte
 
