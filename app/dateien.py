@@ -11,6 +11,7 @@ bleibt.
 import os
 import shutil
 import datetime
+import tempfile
 
 
 def fall_ordner_name(fall: dict, fall_id: int) -> str:
@@ -119,23 +120,55 @@ def fall_als_zip_exportieren(fall_ordner: str, ziel_zip_pfad: str) -> str:
     return erzeugt
 
 
-def backup_erstellen(db_pfad: str, dokumente_ordner: str, ziel_basis_ordner: str) -> str:
+def backup_erstellen(db_pfad: str, dokumente_ordner: str, vorlagen_ordner: str, ziel_zip_pfad: str) -> str:
     """
-    Sichert die gesamte Datenbank sowie alle Fall-Ordner (inkl. aller
-    Unterlagen und erzeugten Dokumente) gesammelt in einen frei wählbaren
-    Zielordner - z.B. eine externe Festplatte oder ein Netzlaufwerk/Server.
-    Legt dort einen neuen, mit Datum/Uhrzeit benannten Unterordner an, damit
-    ältere Backups nicht überschrieben werden.
+    Sichert ALLE Nutzerdaten in einer einzigen ZIP-Datei: die komplette
+    Datenbank (Fälle, Notizen, Fristen, Rechnungen, Einstellungen sowie die
+    Vorlagen-Verwaltung), alle Fall-Unterlagen/erzeugten Dokumente und alle
+    selbst hochgeladenen Word-Vorlagen. Gedacht, um diese Datei auf einer
+    neuen/aktualisierten GuMa-Installation über backup_wiederherstellen()
+    wieder einzuspielen - ohne dass beim Umstieg auf eine neue Version
+    manuell einzelne Ordner kopiert werden müssen.
+
+    Bewusst werden die Datenbank-Datei sowie beide Ordner jeweils
+    VOLLSTÄNDIG kopiert, statt einzelne Felder oder Dateien aufzuzählen:
+    dadurch sichert diese Funktion automatisch auch alles, was künftige
+    Features an neuen Datenbank-Spalten/-Tabellen oder neuen Dateien in
+    diesen beiden Ordnern hinzufügen, ohne hier angepasst werden zu müssen.
     """
-    zeitstempel = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    ziel_ordner = os.path.join(ziel_basis_ordner, f"Gutachten-Manager-Backup_{zeitstempel}")
-    os.makedirs(ziel_ordner, exist_ok=True)
+    with tempfile.TemporaryDirectory() as staging_ordner:
+        if os.path.isfile(db_pfad):
+            shutil.copy2(db_pfad, os.path.join(staging_ordner, os.path.basename(db_pfad)))
+        if os.path.isdir(dokumente_ordner):
+            shutil.copytree(dokumente_ordner, os.path.join(staging_ordner, "dokumente"))
+        if os.path.isdir(vorlagen_ordner):
+            shutil.copytree(vorlagen_ordner, os.path.join(staging_ordner, "vorlagen"))
 
-    if os.path.isfile(db_pfad):
-        shutil.copy2(db_pfad, os.path.join(ziel_ordner, os.path.basename(db_pfad)))
+        ziel_ohne_endung = ziel_zip_pfad[:-4] if ziel_zip_pfad.lower().endswith(".zip") else ziel_zip_pfad
+        os.makedirs(os.path.dirname(ziel_zip_pfad) or ".", exist_ok=True)
+        erzeugt = shutil.make_archive(ziel_ohne_endung, "zip", root_dir=staging_ordner)
+    return erzeugt
 
-    if os.path.isdir(dokumente_ordner):
-        ziel_dokumente = os.path.join(ziel_ordner, "dokumente")
-        shutil.copytree(dokumente_ordner, ziel_dokumente)
 
-    return ziel_ordner
+def backup_wiederherstellen(zip_pfad: str, db_pfad: str, dokumente_ordner: str, vorlagen_ordner: str):
+    """
+    Stellt eine mit backup_erstellen() erzeugte ZIP-Datei wieder her: ersetzt
+    die Datenbank-Datei und überträgt die Ordner "dokumente" und "vorlagen"
+    aus dem Backup (vorhandene Dateien gleichen Namens werden überschrieben,
+    alles andere bleibt unverändert bestehen) - für den vorgesehenen
+    Anwendungsfall, direkt nach einer frischen GuMa-Installation den Stand
+    einer vorherigen Sicherung wiederherzustellen.
+    """
+    with tempfile.TemporaryDirectory() as staging_ordner:
+        shutil.unpack_archive(zip_pfad, staging_ordner, "zip")
+
+        db_in_backup = os.path.join(staging_ordner, os.path.basename(db_pfad))
+        if os.path.isfile(db_in_backup):
+            os.makedirs(os.path.dirname(db_pfad), exist_ok=True)
+            shutil.copy2(db_in_backup, db_pfad)
+
+        for ordnername, ziel_ordner in (("dokumente", dokumente_ordner), ("vorlagen", vorlagen_ordner)):
+            quelle_ordner = os.path.join(staging_ordner, ordnername)
+            if os.path.isdir(quelle_ordner):
+                os.makedirs(ziel_ordner, exist_ok=True)
+                shutil.copytree(quelle_ordner, ziel_ordner, dirs_exist_ok=True)
