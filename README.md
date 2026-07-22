@@ -2,7 +2,7 @@
   <img src="app/assets/logo_icon.png" alt="GuMa Logo" width="120">
 </p>
 
-# GuMa V11 by HB. - Fallverwaltung für psychologische Gutachten
+# GuMa V26.7 by HB. - Fallverwaltung für psychologische Gutachten
 
 Lokale Software zur Verwaltung von Gutachterfällen: Falldaten, Fristen,
 Notizen, Erstellung von Anschreiben/Gutachten aus selbst hinterlegten

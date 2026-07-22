@@ -7,7 +7,10 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-VERSION = "V11"
+# Versionsschema: V<Jahr, 2-stellig>.<Monat ohne führende Null> - wird bei
+# jeder veröffentlichten Änderung manuell auf den aktuellen Monat gesetzt
+# (siehe CLAUDE.md).
+VERSION = "V26.7"
 AUTOR_KUERZEL = "HB."
 WEBSITE_URL = "https://www.hofbrueckl.com"
 
