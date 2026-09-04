@@ -2,7 +2,7 @@
   <img src="app/assets/logo_icon.png" alt="GuMa Logo" width="120">
 </p>
 
-# GuMa V26.7 by HB. - Fallverwaltung für psychologische Gutachten
+# GuMa V26.9 by HB. - Fallverwaltung für psychologische Gutachten
 
 Lokale Software zur Verwaltung von Gutachterfällen: Falldaten, Fristen,
 Notizen, Erstellung von Anschreiben/Gutachten aus selbst hinterlegten
@@ -33,6 +33,19 @@ startet die Software sofort, ganz ohne Internet.
 Tipp: Rechtsklick auf `start_windows.bat` → "Verknüpfung erstellen" → die
 Verknüpfung auf den Desktop legen, dann genügt künftig ein Doppelklick vom
 Desktop aus.
+
+### Alternative: portable Version ohne Python-Installation
+
+Wenn Python nicht installiert werden darf oder soll (z. B. eingeschränkte
+Rechte am Arbeitsplatz), gibt es eine eigenständige, portable
+`GuMa.exe`-Version - ohne Installation, ohne Adminrechte, ohne separat
+installiertes Python. Einfach den Ordner z. B. auf einen USB-Stick oder ins
+persönliche Laufwerk kopieren und `GuMa.exe` doppelklicken.
+
+Diese Version wird über GitHub Actions gebaut: im Tab "Actions" den
+Workflow "Portable Windows-Version bauen" per "Run workflow" auslösen, nach
+Abschluss steht `GuMa-portable-windows.zip` als Download am Workflow-Lauf
+bereit.
 
 ## Aufbau
 

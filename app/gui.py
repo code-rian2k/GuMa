@@ -15,8 +15,9 @@ from app import docgen
 from app import dateien
 from app import vorlagen
 from app import design
+from app.pfade import basis_ordner
 
-BASIS_ORDNER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASIS_ORDNER = basis_ordner()
 # Wird erst in Anwendung.__init__() anhand der Einstellungen bestimmt (siehe
 # app.dateien.ermittle_dokumente_ordner) - kann in den Einstellungen frei
 # gewählt werden, z.B. auf ein lokales Laufwerk außerhalb jeder

@@ -10,8 +10,9 @@ from app import repo
 from app.invoice import berechne_rechnung, KOPIEN_GRENZE, KOPIEN_SATZ_BIS_GRENZE, KOPIEN_SATZ_AB_GRENZE
 from app.invoice_export import exportiere_rechnung_xlsx
 from app import design
+from app.pfade import basis_ordner
 
-BASIS_ORDNER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASIS_ORDNER = basis_ordner()
 
 
 class RechnungFenster(tk.Toplevel):
