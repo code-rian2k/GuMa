@@ -12,6 +12,11 @@ __pycache__/
 *.pyc
 venv/
 
+# PyInstaller-Build-Ausgabe (siehe GuMa.spec) - wird von
+# .github/workflows/build-windows.yml erzeugt, nicht versioniert
+build/
+dist/
+
 # Vom Windows-Start-Skript erzeugt / Editor-/OS-Dateien
 *.log
 .DS_Store

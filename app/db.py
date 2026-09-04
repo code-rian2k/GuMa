@@ -7,7 +7,9 @@ import os
 from datetime import datetime
 from contextlib import contextmanager
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "gutachten_manager.db")
+from app.pfade import basis_ordner
+
+DB_PATH = os.path.join(basis_ordner(), "data", "gutachten_manager.db")
 
 
 # Eine Tabelle je Eintrag, Spalten als (Name, SQL-Definition)-Paare. Dient

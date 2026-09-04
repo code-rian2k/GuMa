@@ -1,0 +1,38 @@
+name: Portable Windows-Version bauen
+
+# Baut GuMa als eigenständige, portable Windows-.exe (PyInstaller) - ohne
+# Installation, ohne Adminrechte, ohne separat installiertes Python auf dem
+# Zielrechner nötig. Manuell über den "Run workflow"-Button im Actions-Tab
+# auslösen; das Ergebnis steht danach als ZIP-Artefakt am Workflow-Lauf
+# zum Download bereit.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller==6.22.2
+
+      - name: GuMa mit PyInstaller bauen
+        run: pyinstaller GuMa.spec --noconfirm
+
+      - name: Portable Version als ZIP verpacken
+        run: Compress-Archive -Path dist/GuMa/* -DestinationPath GuMa-portable-windows.zip
+
+      - name: Als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: GuMa-portable-windows
+          path: GuMa-portable-windows.zip
+          retention-days: 90
