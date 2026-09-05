@@ -307,6 +307,19 @@ class Anwendung(tk.Tk):
         rechts = ttk.Frame(paned, padding=8)
         paned.add(rechts, weight=3)
 
+        # Feste Kopfzeile mit dem aktuell ausgewählten Fall - bleibt sichtbar,
+        # unabhängig davon, wo gerade der Tastaturfokus liegt (anders als die
+        # Auswahlmarkierung in der Fallliste links, die beim Wechsel in einen
+        # Reiter sonst kaum noch zu erkennen ist).
+        self.aktueller_fall_leiste = tk.Frame(rechts, bg=design.FARBE_PRIMAER)
+        self.aktueller_fall_leiste.pack(fill="x", pady=(0, 6))
+        self.aktueller_fall_label = tk.Label(
+            self.aktueller_fall_leiste, text="Kein Fall ausgewählt",
+            bg=design.FARBE_PRIMAER, fg="white", font=(design.SCHRIFT, 11, "bold"),
+            anchor="w", padx=10, pady=6,
+        )
+        self.aktueller_fall_label.pack(fill="x")
+
         self.notebook = ttk.Notebook(rechts)
         self.notebook.pack(fill="both", expand=True)
 
@@ -413,11 +426,21 @@ class Anwendung(tk.Tk):
         self._uebersicht_gutachten_laden()
 
     def _fall_in_tabs_laden(self):
+        self._aktueller_fall_anzeige_aktualisieren()
         self._stammdaten_laden()
         self._fristen_laden()
         self._notizen_laden()
         self._unterlagen_laden()
         self._rechnungen_laden()
+
+    def _aktueller_fall_anzeige_aktualisieren(self):
+        fall = repo.fall_holen(self.aktueller_fall_id) if self.aktueller_fall_id else None
+        if not fall:
+            self.aktueller_fall_label.config(text="Kein Fall ausgewählt")
+            return
+        self.aktueller_fall_label.config(
+            text=f"Ausgewählt: {fall['aktenzeichen']} – {fall['in_sachen']}"
+        )
 
     # ---------- Tab: Übersicht ----------
 
