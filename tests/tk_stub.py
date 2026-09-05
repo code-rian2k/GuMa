@@ -128,6 +128,14 @@ class Notebook(_Base):
     def select(self, index=None):
         pass
 
+    def tabs(self):
+        return list(range(len(self.tabs_liste)))
+
+    def tab(self, tab_id, option=None, **kw):
+        if option == "text":
+            return self.tabs_liste[tab_id][1]
+        return None
+
 
 def _make_widget_class():
     return type("Widget", (_Base,), {})
@@ -139,6 +147,7 @@ def build_stub_tkinter():
     messagebox_mod = types.ModuleType("tkinter.messagebox")
     filedialog_mod = types.ModuleType("tkinter.filedialog")
     simpledialog_mod = types.ModuleType("tkinter.simpledialog")
+    font_mod = types.ModuleType("tkinter.font")
     tkcalendar_mod = types.ModuleType("tkcalendar")
 
     Widget = _make_widget_class()
@@ -218,10 +227,26 @@ def build_stub_tkinter():
 
     simpledialog_mod.askstring = lambda *a, **kw: None
 
+    class Font:
+        """Grobe Attrappe für tkinter.font.Font: liefert keine echten Pixelmaße
+        (kein reales Font-Rendering im Test-Stub), aber eine deterministische,
+        monoton mit der Textlänge wachsende Breite - genug, um Logik zu prüfen,
+        die den längsten Text ermitteln muss (z.B. notebook_tab_breite_anpassen)."""
+
+        def __init__(self, family=None, size=None, *a, **kw):
+            self.family = family
+            self.size = size or 10
+
+        def measure(self, text):
+            return len(text) * abs(self.size)
+
+    font_mod.Font = Font
+
     tk_mod.ttk = ttk_mod
     tk_mod.messagebox = messagebox_mod
     tk_mod.filedialog = filedialog_mod
     tk_mod.simpledialog = simpledialog_mod
+    tk_mod.font = font_mod
 
     # Minimaler Ersatz für tkcalendar.DateEntry (echtes tkcalendar baut
     # intern richtige Tk-Widgets/Canvas-Zeichnungen, die mit obigem Stub
@@ -254,6 +279,7 @@ def build_stub_tkinter():
     sys.modules["tkinter.messagebox"] = messagebox_mod
     sys.modules["tkinter.filedialog"] = filedialog_mod
     sys.modules["tkinter.simpledialog"] = simpledialog_mod
+    sys.modules["tkinter.font"] = font_mod
     sys.modules["tkcalendar"] = tkcalendar_mod
 
     return tk_mod, ttk_mod, messagebox_mod, filedialog_mod, simpledialog_mod
