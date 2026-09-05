@@ -85,7 +85,7 @@ class Anwendung(tk.Tk):
         self.aktueller_fall_id = None
         self._stammdaten_dirty = False
 
-        design.style_anwenden(self)
+        self.style = design.style_anwenden(self)
         design.icon_setzen(self, BASIS_ORDNER)
 
         init_db()
@@ -318,10 +318,11 @@ class Anwendung(tk.Tk):
         self._tab_unterlagen_aufbauen()
         self._tab_rechnungen_aufbauen()
 
-        # Erzwingt sofortiges Neuvermessen der Reiterbreiten, nachdem alle Reiter
-        # erstellt sind - sonst kann Tk auf manchen Windows-Systemen die Breite
-        # anhand einer noch nicht vollständig geladenen Schriftart berechnen und
-        # Beschriftungen dauerhaft abgeschnitten lassen (siehe design.py).
+        # Erzwingt eine Mindestbreite je Reiter anhand einer echten Schriftvermessung
+        # auf diesem System (siehe design.py) - eine geschätzte Zeichenanzahl war
+        # auf manchen Windows-Systemen zu knapp bemessen, weil Segoe UI dort breiter
+        # gerendert wird als angenommen.
+        design.notebook_tab_breite_anpassen(self.notebook, self.style)
         self.update_idletasks()
 
         self._faelle_neu_laden()

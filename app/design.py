@@ -5,6 +5,7 @@ Aussehen künftig leicht zentral anpassen lässt.
 """
 import os
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk
 
 # Versionsschema: V<Jahr, 2-stellig>.<Monat ohne führende Null> - wird bei
@@ -58,14 +59,7 @@ def style_anwenden(root):
     style.configure("TCombobox", padding=4)
 
     style.configure("TNotebook", background=FARBE_HINTERGRUND, borderwidth=0)
-    # width=20 (in Zeichen der Tab-Schrift) erzwingt eine feste Mindestbreite je
-    # Reiter, unabhängig von automatischer Textvermessung - behebt abgeschnittene
-    # Reiter-Beschriftungen ("Übersic...", "Falldat...") auf Windows-Geräten, bei
-    # denen Tk die Reiterbreite offenbar vor vollständigem Laden der Schriftart
-    # (Segoe UI) berechnet und danach nicht mehr neu vermisst. Zwei vorherige
-    # Versuche über DPI-Bewusstsein (Laufzeit-Aufruf + eingebettetes Manifest)
-    # haben das Problem nicht behoben - lag also nicht an der DPI-Skalierung.
-    style.configure("TNotebook.Tab", padding=(16, 9), font=(SCHRIFT, 10), width=20)
+    style.configure("TNotebook.Tab", padding=(16, 9), font=(SCHRIFT, 10))
     style.map("TNotebook.Tab", background=[("selected", FARBE_PRIMAER)], foreground=[("selected", "white")])
 
     style.configure(
@@ -80,6 +74,25 @@ def style_anwenden(root):
     style.configure("TSeparator", background=FARBE_RAND)
 
     return style
+
+
+def notebook_tab_breite_anpassen(notebook, style, schriftart=SCHRIFT, schriftgroesse=10, sicherheitsabstand=40):
+    """Erzwingt eine Mindestbreite je Notebook-Reiter, anhand einer echten
+    Schriftvermessung des längsten aktuell vorhandenen Reiter-Titels auf DIESEM
+    System - statt einer geschätzten Zeichenanzahl. Ein fester Zeichen-Wert
+    (z.B. width=20) hatte sich als nicht robust erwiesen: Segoe UI wird auf
+    manchen Windows-Systemen breiter gerendert als angenommen, sodass lange
+    Reiter wie "Fristen & Termine" trotzdem abgeschnitten blieben. Ein
+    negativer width-Wert bedeutet bei ttk-Textelementen eine absolute Breite
+    in Pixeln (statt einer Zeichenanzahl) - deshalb hier direkt die gemessene
+    Pixelbreite verwenden, das ist unabhängig davon, wie breit ein einzelnes
+    Zeichen der tatsächlich verwendeten Schriftart auf diesem System ist."""
+    tab_ids = notebook.tabs()
+    if not tab_ids:
+        return
+    schrift = tkfont.Font(family=schriftart, size=schriftgroesse)
+    breite_px = max(schrift.measure(notebook.tab(tab_id, "text")) for tab_id in tab_ids)
+    style.configure("TNotebook.Tab", width=-(breite_px + sicherheitsabstand))
 
 
 def _logo_bild_laden(basis_ordner, hoehe=44):
