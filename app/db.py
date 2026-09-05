@@ -127,6 +127,11 @@ STANDARD_EINSTELLUNGEN = {
     "kopien_grenze": "50",
     "kopien_satz_bis_grenze": "0.50",
     "kopien_satz_ab_grenze": "0.15",
+    # Feste Tage für die Terminplanung: kommagetrennte Wochentags-Indizes
+    # (0=Montag ... 6=Sonntag, wie datetime.date.weekday()) - werden im
+    # Kalender-Popup rot markiert und lösen beim Anlegen eines Termins eine
+    # Rückfrage aus (siehe app/kalenderfeld.py)
+    "gesperrte_wochentage": "",
 }
 
 

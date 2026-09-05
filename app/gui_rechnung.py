@@ -11,6 +11,7 @@ from app.invoice import berechne_rechnung, KOPIEN_GRENZE, KOPIEN_SATZ_BIS_GRENZE
 from app.invoice_export import exportiere_rechnung_xlsx
 from app import design
 from app.pfade import basis_ordner
+from app import kalenderfeld
 
 BASIS_ORDNER = basis_ordner()
 
@@ -115,8 +116,10 @@ class RechnungFenster(tk.Toplevel):
 
         ttk.Label(kopf, text="Rechnungsnummer:").grid(row=0, column=0, sticky="w")
         ttk.Entry(kopf, textvariable=self.rechnungsnummer_var, width=20).grid(row=0, column=1, sticky="w", padx=5)
-        ttk.Label(kopf, text="Datum (TT.MM.JJJJ):").grid(row=0, column=2, sticky="w", padx=(20, 0))
-        ttk.Entry(kopf, textvariable=self.datum_var, width=15).grid(row=0, column=3, sticky="w", padx=5)
+        ttk.Label(kopf, text="Datum:").grid(row=0, column=2, sticky="w", padx=(20, 0))
+        kalenderfeld.datumsfeld_erstellen(
+            kopf, self.datum_var, repo.einstellungen_holen(), width=13
+        ).grid(row=0, column=3, sticky="w", padx=5)
 
         # --- Zeitaufwand ---
         zeit_rahmen = ttk.LabelFrame(inhalt, text="1. Zeitaufwand (Minuten je Position)", padding=10)

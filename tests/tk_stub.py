@@ -139,6 +139,7 @@ def build_stub_tkinter():
     messagebox_mod = types.ModuleType("tkinter.messagebox")
     filedialog_mod = types.ModuleType("tkinter.filedialog")
     simpledialog_mod = types.ModuleType("tkinter.simpledialog")
+    tkcalendar_mod = types.ModuleType("tkcalendar")
 
     Widget = _make_widget_class()
 
@@ -161,6 +162,7 @@ def build_stub_tkinter():
     tk_mod.Toplevel = Toplevel
     tk_mod.Menu = Menu
     tk_mod.StringVar = Var
+    tk_mod.BooleanVar = Var
     tk_mod.Text = Text
     tk_mod.Canvas = Widget
     tk_mod.Frame = Widget
@@ -168,7 +170,7 @@ def build_stub_tkinter():
     tk_mod.TclError = TclError
 
     for name in ["Frame", "Label", "Entry", "Button", "Combobox", "Separator",
-                 "LabelFrame", "PanedWindow", "Scrollbar"]:
+                 "LabelFrame", "PanedWindow", "Scrollbar", "Checkbutton"]:
         setattr(ttk_mod, name, Widget)
     ttk_mod.Treeview = Treeview
     ttk_mod.Notebook = Notebook
@@ -221,10 +223,29 @@ def build_stub_tkinter():
     tk_mod.filedialog = filedialog_mod
     tk_mod.simpledialog = simpledialog_mod
 
+    # Minimaler Ersatz für tkcalendar.DateEntry (echtes tkcalendar baut
+    # intern richtige Tk-Widgets/Canvas-Zeichnungen, die mit obigem Stub
+    # nicht funktionieren würden). app/kalenderfeld.py liest/schreibt bei
+    # den Tests ohnehin nur direkt die StringVar, nicht das Widget selbst -
+    # deshalb genügt hier ein Widget, das sich nicht beschwert.
+    class _FakeKalender(_Base):
+        def get_displayed_month(self):
+            import datetime
+            heute = datetime.date.today()
+            return (heute.month, heute.year)
+
+    class DateEntry(_Base):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self._calendar = _FakeKalender()
+
+    tkcalendar_mod.DateEntry = DateEntry
+
     sys.modules["tkinter"] = tk_mod
     sys.modules["tkinter.ttk"] = ttk_mod
     sys.modules["tkinter.messagebox"] = messagebox_mod
     sys.modules["tkinter.filedialog"] = filedialog_mod
     sys.modules["tkinter.simpledialog"] = simpledialog_mod
+    sys.modules["tkcalendar"] = tkcalendar_mod
 
     return tk_mod, ttk_mod, messagebox_mod, filedialog_mod, simpledialog_mod

@@ -16,6 +16,7 @@ from app import dateien
 from app import vorlagen
 from app import design
 from app.pfade import basis_ordner
+from app import kalenderfeld
 
 BASIS_ORDNER = basis_ordner()
 # Wird erst in Anwendung.__init__() anhand der Einstellungen bestimmt (siehe
@@ -609,9 +610,11 @@ class Anwendung(tk.Tk):
 
         eingabe = ttk.Frame(tab)
         eingabe.pack(fill="x", pady=(0, 10))
-        ttk.Label(eingabe, text="Datum (TT.MM.JJJJ):").pack(side="left")
+        ttk.Label(eingabe, text="Datum:").pack(side="left")
         self.neuer_termin_datum = tk.StringVar(value=heute())
-        ttk.Entry(eingabe, textvariable=self.neuer_termin_datum, width=12).pack(side="left", padx=5)
+        kalenderfeld.datumsfeld_erstellen(
+            eingabe, self.neuer_termin_datum, repo.einstellungen_holen(), width=12
+        ).pack(side="left", padx=5)
         ttk.Label(eingabe, text="Beschreibung:").pack(side="left")
         self.neuer_termin_text = tk.StringVar()
         ttk.Entry(eingabe, textvariable=self.neuer_termin_text, width=40).pack(side="left", padx=5)
@@ -649,6 +652,14 @@ class Anwendung(tk.Tk):
         if not self.neuer_termin_text.get().strip():
             messagebox.showwarning("Fehlende Angabe", "Bitte eine Beschreibung für den Termin eingeben.")
             return
+        gesperrte_wochentage = kalenderfeld.gesperrte_wochentage_lesen(repo.einstellungen_holen())
+        if kalenderfeld.ist_gesperrter_tag(self.neuer_termin_datum.get(), gesperrte_wochentage):
+            if not messagebox.askyesno(
+                "Fester Tag",
+                f"Der {self.neuer_termin_datum.get()} ist als fester (freier/verplanter) Tag hinterlegt.\n\n"
+                "Trotzdem einen Termin an diesem Tag einplanen?",
+            ):
+                return
         repo.termin_anlegen(self.aktueller_fall_id, self.neuer_termin_datum.get(), self.neuer_termin_text.get())
         self.neuer_termin_text.set("")
         self._fristen_laden()
@@ -723,7 +734,9 @@ class Anwendung(tk.Tk):
         ttk.Label(anschreiben_frame, text="Name:").grid(row=0, column=2, sticky="w")
         ttk.Entry(anschreiben_frame, textvariable=self.empfaenger_name_var, width=25).grid(row=0, column=3, padx=5)
         ttk.Label(anschreiben_frame, text="Datum:").grid(row=0, column=4, sticky="w")
-        ttk.Entry(anschreiben_frame, textvariable=self.anschreiben_datum_var, width=12).grid(row=0, column=5, padx=5)
+        kalenderfeld.datumsfeld_erstellen(
+            anschreiben_frame, self.anschreiben_datum_var, repo.einstellungen_holen(), width=12
+        ).grid(row=0, column=5, padx=5)
 
         ttk.Label(anschreiben_frame, text="Vorlage:").grid(row=1, column=0, sticky="w", pady=(6, 0))
         self.anschreiben_vorlage_combobox = ttk.Combobox(
@@ -745,7 +758,9 @@ class Anwendung(tk.Tk):
         gutachten_frame = ttk.Frame(tab)
         gutachten_frame.pack(fill="x", pady=(5, 0))
         ttk.Label(gutachten_frame, text="Datum:").pack(side="left")
-        ttk.Entry(gutachten_frame, textvariable=self.gutachten_datum_var, width=12).pack(side="left", padx=5)
+        kalenderfeld.datumsfeld_erstellen(
+            gutachten_frame, self.gutachten_datum_var, repo.einstellungen_holen(), width=12
+        ).pack(side="left", padx=5)
         ttk.Label(gutachten_frame, text="Vorlage:").pack(side="left", padx=(15, 0))
         self.gutachten_vorlage_combobox = ttk.Combobox(
             gutachten_frame, textvariable=self.gutachten_vorlage_var, width=32, state="readonly"
@@ -1269,6 +1284,25 @@ class Anwendung(tk.Tk):
             ttk.Entry(saetze_rahmen, textvariable=var, width=12).grid(row=5 + i, column=1, sticky="w", pady=4, padx=(0, 15))
             vars_[schluessel] = var
 
+        # --- Feste Tage für die Terminplanung ---
+        feste_tage_rahmen = ttk.LabelFrame(inhalt, text="Feste Tage für die Terminplanung", padding=10)
+        feste_tage_rahmen.grid(row=4, column=0, columnspan=2, sticky="we", padx=10, pady=(5, 10))
+
+        ttk.Label(
+            feste_tage_rahmen,
+            text="Angehakte Wochentage gelten als fest (frei oder verplant) - sie werden im\n"
+                 "Kalender rot markiert, und beim Anlegen eines Termins an so einem Tag fragt\n"
+                 "GuMa vorher nach.",
+            justify="left",
+        ).grid(row=0, column=0, columnspan=7, sticky="w", pady=(0, 8))
+
+        bereits_gesperrte_wochentage = kalenderfeld.gesperrte_wochentage_lesen(werte)
+        wochentag_vars = []
+        for index, kuerzel in enumerate(kalenderfeld.WOCHENTAGE_KUERZEL):
+            var = tk.BooleanVar(value=index in bereits_gesperrte_wochentage)
+            ttk.Checkbutton(feste_tage_rahmen, text=kuerzel, variable=var).grid(row=1, column=index, padx=5)
+            wochentag_vars.append(var)
+
         def speichern():
             alter_ordner = dateien.ermittle_dokumente_ordner(BASIS_ORDNER, repo.einstellungen_holen())
             neuer_ordner = ordner_var.get().strip()
@@ -1276,6 +1310,8 @@ class Anwendung(tk.Tk):
             for schluessel, var in vars_.items():
                 repo.einstellung_setzen(schluessel, var.get())
             repo.einstellung_setzen("dokumente_ordner", neuer_ordner)
+            gesperrte_wochentage = {index for index, var in enumerate(wochentag_vars) if var.get()}
+            repo.einstellung_setzen("gesperrte_wochentage", kalenderfeld.gesperrte_wochentage_schreiben(gesperrte_wochentage))
 
             if neuer_ordner and os.path.normcase(os.path.normpath(neuer_ordner)) != os.path.normcase(os.path.normpath(alter_ordner)):
                 if os.path.isdir(alter_ordner) and os.listdir(alter_ordner):

@@ -8,6 +8,12 @@
 # Unterordner) - so bleibt app/pfade.py::basis_ordner() (Icon, Assets,
 # Datenbank, Dokumente, Vorlagen immer direkt neben der .exe) unverändert
 # gültig, ganz gleich ob aus dem Quellcode oder als gebaute .exe gestartet.
+#
+# babel (Abhängigkeit von tkcalendar, für die deutschen Monats-/Wochentags-
+# namen im Kalender-Popup) legt seine Locale-Daten als Paket-Dateien ab,
+# die PyInstallers automatische Importanalyse nicht erfasst - deshalb
+# explizit über collect_data_files eingesammelt.
+from PyInstaller.utils.hooks import collect_data_files
 
 a = Analysis(
     ['main.py'],
@@ -16,8 +22,9 @@ a = Analysis(
     datas=[
         ('icon.ico', '.'),
         ('app/assets', 'app/assets'),
+        *collect_data_files('babel'),
     ],
-    hiddenimports=['lxml.etree', 'lxml._elementpath'],
+    hiddenimports=['lxml.etree', 'lxml._elementpath', 'tkcalendar'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
