@@ -76,7 +76,7 @@ def style_anwenden(root):
     return style
 
 
-def notebook_tab_breite_anpassen(notebook, style, schriftart=SCHRIFT, schriftgroesse=10, sicherheitsabstand=40):
+def notebook_tab_breite_anpassen(notebook, style, schriftart=SCHRIFT, schriftgroesse=10, sicherheitsabstand=70):
     """Erzwingt eine Mindestbreite je Notebook-Reiter, anhand einer echten
     Schriftvermessung des längsten aktuell vorhandenen Reiter-Titels auf DIESEM
     System - statt einer geschätzten Zeichenanzahl. Ein fester Zeichen-Wert
