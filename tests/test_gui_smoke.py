@@ -168,6 +168,53 @@ class TestGuiDurchklick(unittest.TestCase):
         termine = repo.termine_liste(self.app.aktueller_fall_id)
         self.assertEqual(len(termine), 1)
 
+    def test_termin_an_festem_tag_fragt_nach_und_wird_bei_ablehnung_nicht_angelegt(self):
+        from app import repo
+        from tkinter import messagebox
+
+        repo.einstellung_setzen("gesperrte_wochentage", "5,6")  # Sa+So
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set("19.09.2026")  # ein Samstag
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+
+        try:
+            messagebox._antwort_ja_nein["value"] = False
+            self.app._termin_hinzufuegen()
+        finally:
+            messagebox._antwort_ja_nein["value"] = True
+
+        self.assertGreaterEqual(len(messagebox._calls["askyesno"]), 1)
+        self.assertEqual(repo.termine_liste(self.app.aktueller_fall_id), [])
+
+    def test_termin_an_festem_tag_wird_bei_bestaetigung_angelegt(self):
+        from app import repo
+        from tkinter import messagebox
+
+        repo.einstellung_setzen("gesperrte_wochentage", "5,6")  # Sa+So
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set("19.09.2026")  # ein Samstag
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+
+        messagebox._antwort_ja_nein["value"] = True
+        self.app._termin_hinzufuegen()
+
+        self.assertEqual(len(repo.termine_liste(self.app.aktueller_fall_id)), 1)
+
+    def test_termin_an_normalem_tag_fragt_nicht_nach(self):
+        from app import repo
+        from tkinter import messagebox
+
+        repo.einstellung_setzen("gesperrte_wochentage", "5,6")  # Sa+So
+        self.app._neuer_fall()
+        self.app.neuer_termin_datum.set("21.09.2026")  # ein Montag
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+
+        anzahl_vorher = len(messagebox._calls["askyesno"])
+        self.app._termin_hinzufuegen()
+
+        self.assertEqual(len(messagebox._calls["askyesno"]), anzahl_vorher)
+        self.assertEqual(len(repo.termine_liste(self.app.aktueller_fall_id)), 1)
+
     def test_termin_erledigt_wird_durchgestrichen_dargestellt(self):
         self.app._neuer_fall()
         self.app.neuer_termin_text.set("Ortstermin bei der Familie")
@@ -635,6 +682,11 @@ class TestGuiDurchklick(unittest.TestCase):
         from app import repo
         repo.einstellung_setzen("iban", "DE12 3456 7890 0000 0000 00")
         self.assertEqual(repo.einstellungen_holen()["iban"], "DE12 3456 7890 0000 0000 00")
+
+    def test_einstellungen_oeffnen_mit_bereits_gesetzten_festen_tagen(self):
+        from app import repo
+        repo.einstellung_setzen("gesperrte_wochentage", "5,6")
+        self.app._einstellungen_oeffnen()  # darf mit vorbelegten Checkboxen nicht scheitern
 
     def test_info_dialog_oeffnet_ohne_fehler(self):
         self.app._info_oeffnen()

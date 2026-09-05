@@ -65,7 +65,11 @@ gutachten_manager/
 ## Funktionen
 
 - **Fallverwaltung**: Aktenzeichen, Gericht, Parteien, Kinder, Status
-- **Fristen & Termine**: mit Erledigt-Markierung
+- **Fristen & Termine**: mit Erledigt-Markierung. Datum wird per Kalender
+  ausgewählt statt eingetippt; unter Datei → Einstellungen → "Feste Tage für
+  die Terminplanung" lassen sich Wochentage als grundsätzlich frei oder
+  verplant markieren - sie erscheinen dann im Kalender rot, und beim Anlegen
+  eines Termins an so einem Tag fragt GuMa vorher nach.
 - **Notizen**: laufendes Journal je Fall, automatisch mit Zeitstempel
 - **Dokumente**: Anschreiben und Gutachten-Grundgerüst auf Basis selbst
   hinterlegter Word-Vorlagen erzeugen (Titelseite/Anschrift wird automatisch
