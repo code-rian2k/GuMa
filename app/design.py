@@ -58,7 +58,14 @@ def style_anwenden(root):
     style.configure("TCombobox", padding=4)
 
     style.configure("TNotebook", background=FARBE_HINTERGRUND, borderwidth=0)
-    style.configure("TNotebook.Tab", padding=(16, 9), font=(SCHRIFT, 10))
+    # width=20 (in Zeichen der Tab-Schrift) erzwingt eine feste Mindestbreite je
+    # Reiter, unabhängig von automatischer Textvermessung - behebt abgeschnittene
+    # Reiter-Beschriftungen ("Übersic...", "Falldat...") auf Windows-Geräten, bei
+    # denen Tk die Reiterbreite offenbar vor vollständigem Laden der Schriftart
+    # (Segoe UI) berechnet und danach nicht mehr neu vermisst. Zwei vorherige
+    # Versuche über DPI-Bewusstsein (Laufzeit-Aufruf + eingebettetes Manifest)
+    # haben das Problem nicht behoben - lag also nicht an der DPI-Skalierung.
+    style.configure("TNotebook.Tab", padding=(16, 9), font=(SCHRIFT, 10), width=20)
     style.map("TNotebook.Tab", background=[("selected", FARBE_PRIMAER)], foreground=[("selected", "white")])
 
     style.configure(

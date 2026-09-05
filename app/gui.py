@@ -318,6 +318,12 @@ class Anwendung(tk.Tk):
         self._tab_unterlagen_aufbauen()
         self._tab_rechnungen_aufbauen()
 
+        # Erzwingt sofortiges Neuvermessen der Reiterbreiten, nachdem alle Reiter
+        # erstellt sind - sonst kann Tk auf manchen Windows-Systemen die Breite
+        # anhand einer noch nicht vollständig geladenen Schriftart berechnen und
+        # Beschriftungen dauerhaft abgeschnitten lassen (siehe design.py).
+        self.update_idletasks()
+
         self._faelle_neu_laden()
         self._uebersicht_fristen_laden()
         self._uebersicht_gutachten_laden()
