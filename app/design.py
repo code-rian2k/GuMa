@@ -68,7 +68,15 @@ def style_anwenden(root):
     )
     style.configure("Treeview.Heading", font=(SCHRIFT, 10, "bold"), background=FARBE_PRIMAER, foreground="white", relief="flat")
     style.map("Treeview.Heading", background=[("active", FARBE_PRIMAER_DUNKEL)])
-    style.map("Treeview", background=[("selected", FARBE_PRIMAER)], foreground=[("selected", "white")])
+    # "!focus selected" explizit mit demselben Blauton wie "selected" belegen -
+    # ohne das würde ttk/clam die Auswahl grau darstellen, sobald die Fallliste
+    # den Fokus verliert (z.B. nach Klick in einen Reiter rechts), wodurch der
+    # ausgewählte Fall kaum noch zu erkennen ist.
+    style.map(
+        "Treeview",
+        background=[("selected", FARBE_PRIMAER), ("!focus selected", FARBE_PRIMAER)],
+        foreground=[("selected", "white"), ("!focus selected", "white")],
+    )
 
     style.configure("TPanedwindow", background=FARBE_HINTERGRUND)
     style.configure("TSeparator", background=FARBE_RAND)
