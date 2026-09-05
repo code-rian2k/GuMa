@@ -447,7 +447,7 @@ class Anwendung(tk.Tk):
         self.uebersicht_fristen_baum.bind("<Double-1>", self._uebersicht_termin_oeffnen)
         ttk.Label(
             tab,
-            text="(Doppelklick öffnet den Fall im Tab \"Fristen & Termine\" - rot = überfällig, "
+            text="(Doppelklick öffnet den Fall im Tab \"Termine\" - rot = überfällig, "
                  f"gelb = fällig in den nächsten {FRIST_WARNSCHWELLE_TAGE} Tagen)",
             font=("TkDefaultFont", 8, "italic"),
         ).pack(anchor="w", pady=(0, 15))
@@ -493,13 +493,13 @@ class Anwendung(tk.Tk):
         fall_id = self._uebersicht_termin_fall_ids.get(auswahl[0])
         if fall_id is None:
             return
-        self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Fristen & Termine"
+        self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Termine"
 
     def _uebersicht_kalender_tag_ausgewaehlt(self, _event=None):
         datum = self.uebersicht_kalender.selection_get()
         fall_id = self._uebersicht_kalender_tag_zu_fall.get(datum)
         if fall_id is not None:
-            self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Fristen & Termine"
+            self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Termine"
 
     def _uebersicht_gutachten_laden(self):
         for zeile in self.uebersicht_gutachten_baum.get_children():
@@ -633,7 +633,7 @@ class Anwendung(tk.Tk):
 
     def _tab_fristen_aufbauen(self):
         tab = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(tab, text="Fristen & Termine")
+        self.notebook.add(tab, text="Termine")
 
         eingabe = ttk.Frame(tab)
         eingabe.pack(fill="x", pady=(0, 10))
