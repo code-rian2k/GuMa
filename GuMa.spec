@@ -46,6 +46,10 @@ exe = EXE(
     console=False,
     icon='icon.ico',
     contents_directory='.',
+    # Eingebettetes Manifest für DPI-Bewusstsein (siehe GuMa.manifest) -
+    # zuverlässiger als ein Laufzeit-Aufruf von SetProcessDpiAwareness(),
+    # da Windows das Manifest schon vor dem Programmstart liest.
+    manifest='GuMa.manifest',
 )
 
 coll = COLLECT(
