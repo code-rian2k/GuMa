@@ -52,6 +52,44 @@ def _gesperrte_tage_markieren(kalender, gesperrte_wochentage: set):
     kalender.tag_config(GESPERRTER_TAG_TAG, background="#F8D7DA", foreground="#7A1F1F")
 
 
+TERMIN_TAG_TAG = "hat_termin"
+
+
+def uebersicht_kalender_erstellen(parent, **kw):
+    """Erstellt eine fest eingebettete Monatsansicht (kein Popup) für die
+    Übersicht - Tage mit offenen Terminen werden über
+    kalender_termine_markieren() grün markiert."""
+    from tkcalendar import Calendar
+
+    kw.setdefault("locale", "de_DE")
+    kw.setdefault("selectmode", "day")
+    return Calendar(parent, **kw)
+
+
+def kalender_termine_markieren(kalender, termine):
+    """Markiert im Kalender-Widget jeden Tag grün, an dem laut termine
+    (Liste von dicts mit 'datum' im Format TT.MM.JJJJ und 'fall_id') ein
+    offener Termin ansteht. Anders als bei den festen Wochentagen sind das
+    feste Einzeldaten, die unabhängig vom gerade angezeigten Monat einmalig
+    eingetragen werden können - ein erneutes Markieren bei Monatswechsel ist
+    hier nicht nötig.
+
+    Gibt ein Mapping datetime.date -> fall_id zurück (bei mehreren Terminen
+    am selben Tag gewinnt der erste in der Liste), damit ein Klick auf den
+    Tag zum passenden Fall springen kann."""
+    kalender.calevent_remove(tag=TERMIN_TAG_TAG)
+    tag_zu_fall = {}
+    for termin in termine:
+        try:
+            datum = datetime.datetime.strptime(termin.get("datum", ""), "%d.%m.%Y").date()
+        except ValueError:
+            continue
+        kalender.calevent_create(datum, termin.get("beschreibung", ""), TERMIN_TAG_TAG)
+        tag_zu_fall.setdefault(datum, termin["fall_id"])
+    kalender.tag_config(TERMIN_TAG_TAG, background="#D4EDDA", foreground="#155724")
+    return tag_zu_fall
+
+
 def datumsfeld_erstellen(parent, textvariable, einstellungen: dict, **kw):
     """Erstellt ein Kalender-Datumsfeld (Format TT.MM.JJJJ, kompatibel zum
     bisherigen Text-Format), das die in den Einstellungen hinterlegten

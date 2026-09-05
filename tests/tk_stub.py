@@ -229,10 +229,17 @@ def build_stub_tkinter():
     # den Tests ohnehin nur direkt die StringVar, nicht das Widget selbst -
     # deshalb genügt hier ein Widget, das sich nicht beschwert.
     class _FakeKalender(_Base):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self._ausgewaehltes_datum = None
+
         def get_displayed_month(self):
             import datetime
             heute = datetime.date.today()
             return (heute.month, heute.year)
+
+        def selection_get(self):
+            return self._ausgewaehltes_datum
 
     class DateEntry(_Base):
         def __init__(self, *a, **kw):
@@ -240,6 +247,7 @@ def build_stub_tkinter():
             self._calendar = _FakeKalender()
 
     tkcalendar_mod.DateEntry = DateEntry
+    tkcalendar_mod.Calendar = _FakeKalender
 
     sys.modules["tkinter"] = tk_mod
     sys.modules["tkinter.ttk"] = ttk_mod

@@ -317,6 +317,42 @@ class TestGuiDurchklick(unittest.TestCase):
 
         self.assertEqual(self.app.aktueller_fall_id, fall_id)
 
+    def test_uebersicht_kalender_markiert_tag_mit_termin(self):
+        import datetime
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+        self.app.neuer_termin_datum.set("21.09.2026")
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+        self.app._termin_hinzufuegen()
+
+        self.assertEqual(
+            self.app._uebersicht_kalender_tag_zu_fall.get(datetime.date(2026, 9, 21)), fall_id
+        )
+
+    def test_uebersicht_kalender_klick_springt_zum_fall(self):
+        import datetime
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+        self.app.neuer_termin_datum.set("21.09.2026")
+        self.app.neuer_termin_text.set("Ortstermin bei der Familie")
+        self.app._termin_hinzufuegen()
+
+        self.app._neuer_fall()  # anderer Fall ist jetzt ausgewählt
+        self.app.uebersicht_kalender._ausgewaehltes_datum = datetime.date(2026, 9, 21)
+        self.app._uebersicht_kalender_tag_ausgewaehlt()
+
+        self.assertEqual(self.app.aktueller_fall_id, fall_id)
+
+    def test_uebersicht_kalender_klick_auf_tag_ohne_termin_aendert_nichts(self):
+        import datetime
+        self.app._neuer_fall()
+        fall_id = self.app.aktueller_fall_id
+
+        self.app.uebersicht_kalender._ausgewaehltes_datum = datetime.date(2026, 12, 24)
+        self.app._uebersicht_kalender_tag_ausgewaehlt()
+
+        self.assertEqual(self.app.aktueller_fall_id, fall_id)
+
     def test_datei_hinzufuegen_zu_fall(self):
         self.app._neuer_fall()
         self.app.stamm_vars["aktenzeichen"].set("5 F 55/26")

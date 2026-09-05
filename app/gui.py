@@ -418,6 +418,16 @@ class Anwendung(tk.Tk):
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="Übersicht")
 
+        ttk.Label(tab, text="Kalenderübersicht:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+        self.uebersicht_kalender = kalenderfeld.uebersicht_kalender_erstellen(tab)
+        self.uebersicht_kalender.pack(anchor="w", pady=(0, 5))
+        self._uebersicht_kalender_tag_zu_fall = {}
+        self.uebersicht_kalender.bind("<<CalendarSelected>>", self._uebersicht_kalender_tag_ausgewaehlt)
+        ttk.Label(
+            tab, text="(Grün markierte Tage haben einen offenen Termin - Klick springt zum Fall)",
+            font=("TkDefaultFont", 8, "italic"),
+        ).pack(anchor="w", pady=(0, 15))
+
         ttk.Label(tab, text="Offene Fristen & Termine über alle Fälle:", font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
         self.uebersicht_fristen_baum = ttk.Treeview(tab, columns=("datum", "fall", "beschreibung"), show="headings")
         for spalte, text, breite in [("datum", "Datum", 100), ("fall", "Fall", 220), ("beschreibung", "Beschreibung", 340)]:
@@ -455,7 +465,8 @@ class Anwendung(tk.Tk):
         for zeile in self.uebersicht_fristen_baum.get_children():
             self.uebersicht_fristen_baum.delete(zeile)
         self._uebersicht_termin_fall_ids = {}
-        for termin in repo.alle_offenen_termine():
+        alle_termine = repo.alle_offenen_termine()
+        for termin in alle_termine:
             fall_bezeichnung = termin.get("aktenzeichen") or termin.get("in_sachen") or f"Fall {termin['fall_id']}"
             tag = _frist_dringlichkeit(termin["datum"])
             self.uebersicht_fristen_baum.insert(
@@ -464,6 +475,9 @@ class Anwendung(tk.Tk):
                 tags=(tag,) if tag else (),
             )
             self._uebersicht_termin_fall_ids[str(termin["id"])] = termin["fall_id"]
+        self._uebersicht_kalender_tag_zu_fall = kalenderfeld.kalender_termine_markieren(
+            self.uebersicht_kalender, alle_termine
+        )
 
     def _uebersicht_termin_oeffnen(self, _event=None):
         auswahl = self.uebersicht_fristen_baum.selection()
@@ -473,6 +487,12 @@ class Anwendung(tk.Tk):
         if fall_id is None:
             return
         self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Fristen & Termine"
+
+    def _uebersicht_kalender_tag_ausgewaehlt(self, _event=None):
+        datum = self.uebersicht_kalender.selection_get()
+        fall_id = self._uebersicht_kalender_tag_zu_fall.get(datum)
+        if fall_id is not None:
+            self._springe_zu_fall(fall_id, tab_index=2)  # Tab "Fristen & Termine"
 
     def _uebersicht_gutachten_laden(self):
         for zeile in self.uebersicht_gutachten_baum.get_children():
